@@ -665,7 +665,7 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
 dfREM_hosp <- tmerge_three_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_covid) %>% broom::tidy(exponentiate=T, conf.int=T) %>%
+      data = dfREM_hosp) %>% broom::tidy(exponentiate=T, conf.int=T) %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_period_three.csv'), sep = ';', row.names = F)
 
 # Subgroup Analysis
