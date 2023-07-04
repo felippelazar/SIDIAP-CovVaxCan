@@ -384,12 +384,12 @@ dfREMlong <- dfREMlong %>%
             by = c('subject_id' = 'subject_id')) %>%
   # Creating Variables for Sub-Group Analysis
   # Creating Variables for Sub-Group Analysis
-  mutate(age_bin_60 = if_else(age >= 60, 'Age 60+', 'Age < 60'),
-         age_bin_65 = if_else(age >= 65, 'Age 65+', 'Age < 65'),
-         age_bin_70 = if_else(age >= 70, 'Age 70+', 'Age < 75'),
-         age_bin_75 = if_else(age >= 75, 'Age 75+', 'Age < 70'),
-         age_bin_80 = if_else(age >= 80, 'Age 80+', 'Age < 75'),
-         age_bin_85 = if_else(age >= 85, 'Age 85+', 'Age < 80'),
+      mutate(age_bin_60 = if_else(age >= 60, 'Age 60+', 'Age < 60'),
+             age_bin_65 = if_else(age >= 65, 'Age 65+', 'Age < 65'),
+             age_bin_70 = if_else(age >= 70, 'Age 70+', 'Age < 70'),
+             age_bin_75 = if_else(age >= 75, 'Age 75+', 'Age < 75'),
+             age_bin_80 = if_else(age >= 80, 'Age 80+', 'Age < 80'),
+             age_bin_85 = if_else(age >= 85, 'Age 85+', 'Age < 85'),
          cancer_diagnosis_time_bin_0 = if_else(cancer_diagnosis_time == 0, '< 1y', '1-5yr'),
          cancer_diagnosis_time_bin_1 = if_else(cancer_diagnosis_time %in% c(0, 1), '< 2y', '2-5yr'),
          cancer_diagnosis_time_bin_2 = if_else(cancer_diagnosis_time %in% c(0, 1, 2), '< 3y', '3-5yr'),
