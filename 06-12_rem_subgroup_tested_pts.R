@@ -16,6 +16,11 @@ library(tableone)
 source('utils.R')
 library(emmeans)
 
+# Creating Folder for Exporting Files if Does Not Exist Yet
+ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_12')), dir.create(here('Results', 'dose_12')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_12', 'sub_group_tested_patients')), dir.create(here('Results', 'dose_12', 'sub_group_tested_patients')), FALSE)
+
 ## Merge batched data into the one dataframe
 # Make into dataframe
 dfREM <- do.call(bind_rows, z_merge_1st2nd)

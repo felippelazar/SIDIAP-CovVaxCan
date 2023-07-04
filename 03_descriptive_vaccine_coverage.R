@@ -4,7 +4,6 @@
 # ============================================================================ #
 
 # All datasets used in this analysis were created during STEP 1 ('Importing Cohorts.R') or STEP 2 ('Preparing Dataset.R')
-
 library(tidyverse)
 library(readxl)
 library(here)
@@ -12,6 +11,10 @@ library(tidylog)
 library(survminer)
 library(tableone)
 source('utils.R')
+
+# Creating Folder for Exporting Files if Does Not Exist Yet
+ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
+ifelse(!dir.exists(here('Results', 'descriptive')), dir.create(here('Results', 'descriptive')), FALSE)
 
 #' # Merging Cohorts 
 # Merging All Variables and Datasets Created During Previous Steps

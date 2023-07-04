@@ -12,6 +12,11 @@ library(survival)
 library(survminer)
 source('utils.R')
 
+# Creating Folder for Exporting Files if Does Not Exist Yet
+ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_3')), dir.create(here('Results', 'dose_3')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_3', 'sub_group_hosp_3_days')), dir.create(here('Results', 'dose_3', 'sub_group_hosp_3_days')), FALSE)
+
 #-- Merge batched data into the one dataframe
 dfREM <- do.call(bind_rows, z_merge_3rd)
 
