@@ -1,0 +1,276 @@
+# ============================================================================ #
+# 11. REM Analysis - COVID-19 Vaccine 3rd - Test Negative Outcomes     #
+# Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
+# ============================================================================ #
+
+library(tidyverse)
+library(readxl)
+library(here)
+library(tidylog)
+library(survival)
+library(survival)
+library(survminer)
+source('utils.R')
+library(broom.helpers)
+
+# Creating Folder for Exporting Files if Does Not Exist Yet
+ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_3')), dir.create(here('Results', 'dose_3')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_3', 'negative outcomes')), dir.create(here('Results', 'dose_3', 'negative outcomes')), FALSE)
+
+# Importing List of Concept IDS for Negative Outcomes
+# We will need to iterate through this table
+df_negative_outcomes <- read.table(here('NCO.csv'), sep = ',', header=T)
+
+# Selecting Outcome ID
+negative_outcome_id <- df_negative_outcomes$ConceptId[1]
+
+# Creating a Temporary Dataset to Add Temporary Outcome 
+cancerNO <- cancerCohort %>% 
+      select(subject_id) %>%
+      left_join(cdm$condition_occurrence %>% 
+                      filter(person_id %in% cancerIDS) %>%
+                      filter(cdm$condition_concept_id == negative_outcome_id) %>%
+                      select(person_id, condition_start_date, condition_concept_id) %>%
+                      collect(),
+                by = c('subject_id' = 'person_id')) %>%
+      filter(coalesce(condition_start_date >= as.Date.character('27/12/2020', format = '%d/%m/%Y'), TRUE)) %>%
+      arrange(subject_id, condition_start_date) %>%
+      mutate(outcome_number = unlist(mapply(
+            function(len, val) if (val == 0) rep(0, len) else 1:len,
+            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+
+cancerNOWide <- cancerNO %>%
+      pivot_wider(id_cols = subject_id, names_from = c('outcome_number'), 
+                  values_from = c('condition_start_date'),
+                  names_glue = "{.value}_{outcome_number}") %>%
+      select(-ends_with('_NA'))
+
+# Next step is now adding this outcome to our REM analysis output
+#-- Merge batched data into the one dataframe
+dfREM <- do.call(bind_rows, z_merge_3rd)
+
+# HERE WILL BE MANIPULATING THE DATA TO INCLUDE THE OUTCOME OF HOSPITALIZATION UNTIL DAY 3th
+dfREMVac <- dfREM %>%
+  mutate(gv_subject_pair = paste(gv_subject_id, gc_subject_id, sep  = '-')) %>%
+  dplyr::select(starts_with('gv')) %>%
+  mutate(tx_group = 1) %>%
+  setNames(gsub('gv_', '', names(.)))
+
+dfREMControl <- dfREM %>%
+  mutate(gc_subject_pair = paste(gv_subject_id, gc_subject_id, sep  = '-')) %>%
+  dplyr::select(starts_with('gc'), 
+                gv_gender_concept_id, 
+                gv_aga_code, 
+                gv_cancer_diagnosis_time, 
+  ) %>%
+  mutate(tx_group = 0) %>%
+  setNames(gsub('gc_', '', names(.))) %>%
+  setNames(gsub('gv_', '', names(.)))
+
+dfREMlong <- bind_rows(dfREMVac, dfREMControl)
+rm(dfREMVac)
+rm(dfREMControl)
+
+negative_outcomes_vars <- colnames(cancerNOWide)[grepl('condition_start_date', colnames(cancerNOWide))]
+
+dfREMlong <- dfREMlong %>%
+  left_join(cancerNOWide, by = c('subject_id')) %>%
+  # NA occurrences for outcomes before minimum Date
+  mutate(across(contains('condition_start_date'), ~ if_else(.x <= enrol_date, as.Date(NA), .x))) %>%
+  # NA occurrences for outcomes after maximum Date
+  mutate(across(contains('condition_start_date'), ~ if_else(.x > maxDate, as.Date(NA), .x))) %>% 
+  # Selecting minimum date of COVID-19 infection and hospitalization (excluding previously created NAs)
+  mutate(condition_start_date = exec(pmin, !!!rlang::syms(negative_outcomes_vars), na.rm = TRUE)
+  ) %>%
+  select(-starts_with('condition_start_date_'))
+
+dfVac <- dfREMlong %>%
+  filter(vac_day == 1) %>%
+  setNames(paste0('gv_', names(.)))
+
+dfControl <- dfREMlong %>%
+  filter(vac_day == 0) %>%
+  setNames(paste0('gc_', names(.)))
+
+dfREM <- dfVac %>%
+  left_join(dfControl, by = c('gv_subject_pair' = 'gc_subject_pair'))
+
+# Creating Outcome Variables (Dates and Outcome Variables)
+# Important: date of control group vaccination is included to censor both patients
+dfREM <- dfREM %>%
+  # Correcting for patients with COVID-19 after vaccination - affects only hospitalization and death outcomes
+  mutate(gc_outcome_vac_date_3 = if_else(
+    coalesce(gc_outcome_vac_date_3 >= gc_covid_date, F), 
+    as.Date(NA), 
+    gc_outcome_vac_date_3)
+  ) %>%
+  # Get the minimum date of each possible outcome
+  mutate(
+    # Control Group
+    gc_outcome_condition_date = pmin(gc_outcome_vac_date_3, gc_condition_start_date, gc_death_date, gv_vac_exposure_date_4, na.rm = T),
+    # Vaccinated Group
+    gv_outcome_condition_date = pmin(gc_outcome_vac_date_3, gv_condition_start_date, gv_death_date, gv_vac_exposure_date_4, na.rm = T),
+  ) %>%
+  # Compare the chosen outcome with the outcome of interest
+  mutate(
+    # Control Group Outcomes
+    gc_outcome_condition_status = case_when(
+      gc_outcome_condition_date == gc_condition_start_date ~ 2, # Negative Outcome
+      gc_outcome_condition_date == gc_death_date ~ 1, # Death
+      gc_outcome_condition_date == gc_outcome_vac_date_3 ~ 0, # 3rd dose Control Group
+      gc_outcome_condition_date == gv_vac_exposure_date_4 ~ 0, # 4th dose Vaccinated Group
+      is.na(gc_outcome_condition_date) ~ 0 # No Outcome
+    ),  
+    # Vaccinated Group Outcomes
+    gv_outcome_condition_status = case_when(
+      gv_outcome_condition_date == gv_hosp_admission_date ~ 2, # Negative Outcome
+      gv_outcome_condition_date == gv_death_date ~ 1, # Death
+      gv_outcome_condition_date == gc_outcome_vac_date_3 ~ 0, # 3rd dose Control Group
+      gv_outcome_condition_date == gv_vac_exposure_date_4 ~ 0, # 4th dose Vaccinated Group
+      is.na(gv_outcome_condition_date) ~ 0 # No Outcome
+    )) %>%
+  mutate(
+    across(matches('gc_outcome.*date$'), ~ if_else(is.na(.x), pmin(gc_maxDate, gc_end_db_followup), .x)),
+    across(matches('gv_outcome.*date$'), ~ if_else(is.na(.x), pmin(gv_maxDate, gv_end_db_followup), .x)),
+    across(matches('gc_outcome.*date$'), ~ pmin(.x, gc_maxDate)),
+    across(matches('gv_outcome.*date$'), ~ pmin(.x, gv_maxDate))
+  )
+
+# Creating time as days for the outcome dates described before - time from eligibility date (minimum date)
+dfREM <- dfREM %>%
+  mutate(
+    # Control Group
+    gc_outcome_condition_time = as.numeric(difftime(gc_outcome_condition_date, gv_vac_exposure_date_3,units = 'days')),
+    # Vaccinated Group
+    gv_outcome_condition_time = as.numeric(difftime(gv_outcome_condition_date, gv_vac_exposure_date_3, units = 'days')),
+  ) %>%
+  mutate(
+    gv_vac_exposure_time_3 = as.numeric(difftime(gv_vac_exposure_date_3, gv_vac_exposure_date_3, units = 'days'))
+  ) %>%
+  mutate(across(matches('.*outcome.*time'), ~ if_else(.x == 0, 0.5, .x)))
+
+# Creating a long dataset for further analysis
+dfREMVac <- dfREM %>%
+  select(starts_with('gv')) %>%
+  setNames(gsub('gv_', '', names(.)))
+
+dfREMControl <- dfREM %>%
+  select(starts_with('gc'), 
+         gv_gender_concept_id, 
+         gv_aga_code, 
+         gv_cancer_diagnosis_time, 
+         gv_vac_scheme) %>%
+  setNames(gsub('gc_', '', names(.))) %>%
+  setNames(gsub('gv_', '', names(.)))
+
+dfREMlong <- bind_rows(dfREMVac, dfREMControl)
+
+# Creating Unique Identifiers for Cox Analysis (as matches can be duplicated eventually)
+dfREMlong <- dfREMlong %>%
+  mutate(new_id = 1:nrow(.))
+
+# Creating tmerge function
+tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){
+  
+  df <- df %>%
+    mutate(p1_time = vac_exposure_time_3,
+           p2_time = vac_exposure_time_3 + 14,
+           p3_time = vac_exposure_time_3 + 28,
+           p4_time = vac_exposure_time_3 + 60,
+           p5_time = vac_exposure_time_3 + 120) %>%
+    mutate(
+      delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
+      omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
+  
+  dft <- tmerge(df, df, 
+                id=new_id, 
+                outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
+                dose_three = tdc(vac_exposure_time_3),
+                p1 = tdc(p1_time),
+                p2 = tdc(p2_time),
+                p3 = tdc(p3_time),
+                p4 = tdc(p4_time),
+                p5 = tdc(p5_time),
+                delta_voc = tdc(delta_voc_time),
+                omicron_voc = tdc(omicron_voc_time)
+  )
+  
+  dft <- dft %>%
+    mutate(period = paste(p1, p2, p3, p4, p5, sep='-')) %>%
+    mutate(period = fct_case_when(
+      period == '0-0-0-0-0' ~ 'no-vax',
+      period == '1-0-0-0-0' ~ 'V3 0-14D',
+      period == '1-1-0-0-0' ~ 'V3 14-28D',
+      period == '1-1-1-0-0' ~ 'V3 28-60D',
+      period == '1-1-1-1-0' ~ 'V3 60-120',
+      period == '1-1-1-1-1' ~ 'V3 120+'
+    )) %>% 
+    mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
+    mutate(covid_voc = fct_case_when(
+      voc == '1-0' ~ 'Delta VOC',
+      voc == '1-1' ~ 'Omicron VOC'
+    ))
+  
+  return(dft)
+}
+
+tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status){
+  
+  df <- df %>%
+    mutate(p1_time = vac_exposure_time_3 + 14,
+           p2_time = vac_exposure_time_3 + 60) %>%
+    mutate(
+      delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
+      omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
+  
+  dft <- tmerge(df, df, 
+                id=new_id, 
+                outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
+                dose_three = tdc(vac_exposure_time_3),
+                p1 = tdc(p1_time),
+                p2 = tdc(p2_time),
+                delta_voc = tdc(delta_voc_time),
+                omicron_voc = tdc(omicron_voc_time)
+  )
+  
+  dft <- dft %>%
+    mutate(period = paste(p1, p2, sep='-')) %>%
+    mutate(period = fct_case_when(
+      period == '0-0' ~ 'no-vax',
+      period == '1-0' ~ 'V3 14-60D',
+      period == '1-1' ~ 'V3 60+'
+    )) %>% 
+    mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
+    mutate(covid_voc = fct_case_when(
+      voc == '1-0' ~ 'Delta VOC',
+      voc == '1-1' ~ 'Omicron VOC'
+    ))
+  
+  return(dft)
+}
+
+#-- Analysis
+#-- Negative Outcome
+fit <- survfit(Surv(outcome_condition_time, outcome_condition_status == 2) ~ tx_group, 
+               data = dfREMlong)
+
+temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
+
+pdf(here('Results', 'dose_3', 'negative outcomes', glue('outcome_curve_periods', negative_outcome_id, '.pdf')))
+print(temp.cumhaz, newpage = FALSE)
+dev.off()
+
+dfREM_condition <- tmerge_all_periods(dfREMlong, 'outcome_condition_time', 'outcome_condition_status')
+
+coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+      data = dfREM_condition) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_3', 'negative outcomes', glue('outcome_all_periods', negative_outcome_id, '.csv')), sep = ';', row.names = F)
+
+dfREM_condition <- tmerge_three_periods(dfREMlong, 'outcome_condition_time', 'outcome_condition_status')
+
+coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+      data = dfREM_condition) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_3', 'negative outcomes', glue('outcome_three_periods', negative_outcome_id, '.csv')), sep = ';', row.names = F)
