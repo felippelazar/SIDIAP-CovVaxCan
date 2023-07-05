@@ -151,7 +151,8 @@ for(j in 1:(length(date_list))){
            previous_hosp_covid = as.numeric(coalesce(hosp_admission_date <= startDate, FALSE)),
            previous_death =  as.numeric(coalesce(death_date <= startDate, FALSE)),
            previous_vac_1 =  as.numeric(coalesce(vac_exposure_date_1 < startDate, FALSE)),
-           moved_out = as.numeric(coalesce(end_db_followup <= startDate, FALSE))) %>%
+           moved_out = as.numeric(coalesce(end_db_followup <= startDate, FALSE)),
+           noteligibleyet = as.numeric(coalesce(minDate > startDate, FALSE))) %>%
     # Creating Vaccination as Outcomes Dates for Control Groups - Will be used in further Analysis
     mutate(outcome_vac_date_1 = vac_exposure_date_1,
            outcome_vac_date_2 = vac_exposure_date_2,
@@ -174,7 +175,8 @@ for(j in 1:(length(date_list))){
     filter(previous_hosp_covid == 0) %>%
     filter(previous_death == 0) %>%
     filter(previous_vac_1 == 0) %>%
-    filter(moved_out == 0)
+    filter(moved_out == 0) %>% 
+    filter(noteligibleyet == 0)
     
     eligibles_1st2nd[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date)
     ## Propensity score 

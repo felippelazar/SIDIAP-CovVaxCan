@@ -12,6 +12,7 @@ library(survival)
 library(survminer)
 source('utils.R')
 library(broom.helpers)
+library(emmeans)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
@@ -305,8 +306,6 @@ tidyInteractionCox <- function(interaction_var, df, outcome){
   
   p_int_lrtest <- anova(m, m_null)[['Pr(>|Chi|)']][2]
   
-  broom::tidy(m, conf.int = T)
-  
   m_emeans <- emmeans(m, specs = c('period', interaction_var))
   m_contrasts <- contrast(m_emeans, 'trt.vs.ctrl', by = interaction_var)
   tidy_contrasts <- confint(m_contrasts, type = 'wald') %>% as.tibble() %>%
@@ -541,7 +540,7 @@ temp.table <- CreateTableOne(data = dfREMlong,
                              vars = c(vars_outcomes_status,
                                       vars_outcomes_time,
                                       'tx_group'),
-                             factorVars = c(vars_outcomes),
+                             factorVars = c(vars_outcomes_status),
                              strata = 'tx_group',
                              includeNA = TRUE)
 
@@ -588,13 +587,13 @@ dev.off()
 dfREM_covid <- tmerge_all_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_covid_period_all.csv'), sep = ';', row.names = F)
 
 dfREM_covid <- tmerge_three_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>%  broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_covid_period_three.csv'), sep = ';', row.names = F)
 
 # Sub-group Analysis 
@@ -637,13 +636,13 @@ dev.off()
 dfREM_hosp <- tmerge_all_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_hosp_period_all.csv'), sep = ';', row.names = F)
 
 dfREM_hosp <- tmerge_three_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_hosp) %>%   broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_hosp_period_three.csv'), sep = ';', row.names = F)
 
 # Subgroup Analysis
@@ -677,13 +676,13 @@ dev.off()
 dfREM_hosp_severe <- tmerge_all_periods(dfREMlong, 'outcome_hosp_severe_time', 'outcome_hosp_severe_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_hosp_severe) %>% 
-  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_hosp_severe_period_all.csv'), sep = ';', row.names = F)
 
 dfREM_hosp_severe <- tmerge_three_periods(dfREMlong, 'outcome_hosp_severe_time', 'outcome_hosp_severe_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp_severe) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_hosp_severe) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_hosp_severe_period_three.csv'), sep = ';', row.names = F)
 
 #-- Outcome COVID-19 Death
@@ -709,12 +708,12 @@ dev.off()
 dfREM_death <- tmerge_all_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% 
-  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_death_period_all.csv'), sep = ';', row.names = F)
 
 dfREM_death <- tmerge_three_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
 
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_death_period_three.csv'), sep = ';', row.names = F)
 
 
@@ -757,13 +756,13 @@ dev.off()
 dfREM_hosp_death <- tmerge_all_periods(dfREMlong, 'outcome_hosp_death_time', 'outcome_hosp_death_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_hosp_death) %>% 
-  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_hosp_death_period_all.csv'), sep = ';', row.names = F)
 
 dfREM_hosp_death <- tmerge_three_periods(dfREMlong, 'outcome_hosp_death_time', 'outcome_hosp_death_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
 
 # Subgroup Analysis

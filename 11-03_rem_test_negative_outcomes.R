@@ -12,6 +12,7 @@ library(survival)
 library(survminer)
 source('utils.R')
 library(broom.helpers)
+library(glue)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
@@ -22,15 +23,18 @@ ifelse(!dir.exists(here('Results', 'dose_3', 'negative outcomes')), dir.create(h
 # We will need to iterate through this table
 df_negative_outcomes <- read.table(here('NCO.csv'), sep = ',', header=T)
 
-# Selecting Outcome ID
-negative_outcome_id <- df_negative_outcomes$ConceptId[1]
+
+
+for (negative_outcome_id in df_negative_outcomes$ConceptId) {
+  
 
 # Creating a Temporary Dataset to Add Temporary Outcome 
+
 cancerNO <- cancerCohort %>% 
       select(subject_id) %>%
       left_join(cdm$condition_occurrence %>% 
                       filter(person_id %in% cancerIDS) %>%
-                      filter(cdm$condition_concept_id == negative_outcome_id) %>%
+                      filter(condition_concept_id == negative_outcome_id) %>%
                       select(person_id, condition_start_date, condition_concept_id) %>%
                       collect(),
                 by = c('subject_id' = 'person_id')) %>%
@@ -45,6 +49,8 @@ cancerNOWide <- cancerNO %>%
                   values_from = c('condition_start_date'),
                   names_glue = "{.value}_{outcome_number}") %>%
       select(-ends_with('_NA'))
+
+cancerNOWide <- cancerCohort %>% select(subject_id) %>% left_join(cancerNOWide)
 
 # Next step is now adding this outcome to our REM analysis output
 #-- Merge batched data into the one dataframe
@@ -124,7 +130,7 @@ dfREM <- dfREM %>%
     ),  
     # Vaccinated Group Outcomes
     gv_outcome_condition_status = case_when(
-      gv_outcome_condition_date == gv_hosp_admission_date ~ 2, # Negative Outcome
+      gv_outcome_condition_date == gv_condition_start_date ~ 2, # Negative Outcome
       gv_outcome_condition_date == gv_death_date ~ 1, # Death
       gv_outcome_condition_date == gc_outcome_vac_date_3 ~ 0, # 3rd dose Control Group
       gv_outcome_condition_date == gv_vac_exposure_date_4 ~ 0, # 4th dose Vaccinated Group
@@ -156,13 +162,8 @@ dfREMVac <- dfREM %>%
   setNames(gsub('gv_', '', names(.)))
 
 dfREMControl <- dfREM %>%
-  select(starts_with('gc'), 
-         gv_gender_concept_id, 
-         gv_aga_code, 
-         gv_cancer_diagnosis_time, 
-         gv_vac_scheme) %>%
-  setNames(gsub('gc_', '', names(.))) %>%
-  setNames(gsub('gv_', '', names(.)))
+  select(starts_with('gc')) %>%
+  setNames(gsub('gc_', '', names(.)))
 
 dfREMlong <- bind_rows(dfREMVac, dfREMControl)
 
@@ -263,14 +264,17 @@ pdf(here('Results', 'dose_3', 'negative outcomes', glue('outcome_curve_periods',
 print(temp.cumhaz, newpage = FALSE)
 dev.off()
 
-dfREM_condition <- tmerge_all_periods(dfREMlong, 'outcome_condition_time', 'outcome_condition_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_condition) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
-  write.table(here('Results', 'dose_3', 'negative outcomes', glue('outcome_all_periods', negative_outcome_id, '.csv')), sep = ';', row.names = F)
+# dfREM_condition <- tmerge_all_periods(dfREMlong, 'outcome_condition_time', 'outcome_condition_status')
+# 
+# coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+#       data = dfREM_condition) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%  broom.helpers::tidy_add_reference_rows() %>%  broom.helpers::tidy_add_n() %>%
+#   write.table(here('Results', 'dose_3', 'negative outcomes', glue('outcome_all_periods', negative_outcome_id, '.csv')), sep = ';', row.names = F)
 
 dfREM_condition <- tmerge_three_periods(dfREMlong, 'outcome_condition_time', 'outcome_condition_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_condition) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% broom.helpers::tidy_add_n() %>%
+      data = dfREM_condition) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%  broom.helpers::tidy_add_reference_rows() %>%  broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_3', 'negative outcomes', glue('outcome_three_periods', negative_outcome_id, '.csv')), sep = ';', row.names = F)
+
+  print(negative_outcome_id)
+}

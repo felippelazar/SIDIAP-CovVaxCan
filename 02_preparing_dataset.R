@@ -144,7 +144,7 @@ cancerDiagnosisWide <- cancerCohort %>%
   mutate(across(starts_with('cancer_dx_'), ~ ifelse(is.na(.x), 0, 1))) %>%
   select(-cancer_dx_NA) %>%
   mutate(cancer_dx_other_2 = if_else(rowSums(.[2:ncol(.)]) == 0, 1, 0))
-  
+
 cancerDiagnosisGroupWide <- cancerCohort %>%
   select(subject_id) %>%
   left_join(cancerDiagnosis %>% filter(include == 1),
@@ -201,10 +201,10 @@ covidVaccine <- covidVaccine %>%
 
 # Merging with Cancer Cohort
 cancerVaccine <- cancerCohort %>%
-    left_join(covidVaccine %>% 
-                select(subject_id, drug_exposure_date, drug_concept_id, dose_number, vac_lag_days),
-              by = c('subject_id' = 'subject_id'))
-  
+  left_join(covidVaccine %>% 
+              select(subject_id, drug_exposure_date, drug_concept_id, dose_number, vac_lag_days),
+            by = c('subject_id' = 'subject_id'))
+
 cancerVaccineWide <- cancerVaccine %>%
   pivot_wider(id_cols = subject_id, names_from = c('dose_number'), 
               values_from = c('drug_exposure_date', 'drug_concept_id', 'vac_lag_days'),
@@ -230,7 +230,7 @@ covidDiagnosis <- covidDiagnosis %>%
   mutate(infection_number = unlist(mapply(
     function(len, val) if (val == 0) rep(0, len) else 1:len,
     rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values))) %>%
-mutate(infection_number = ifelse(is.na(covid_date), NA, infection_number))
+  mutate(infection_number = ifelse(is.na(covid_date), NA, infection_number))
 
 # Creating Lag Infection Days between Diagnosis
 covidDiagnosis <- covidDiagnosis %>%
