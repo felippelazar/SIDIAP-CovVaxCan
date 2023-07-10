@@ -2,9 +2,11 @@ library(EmpiricalCalibration)
 library(here)
 library(glue)
 library(tidyverse)
+library(openxlsx)
 
 # Setting Temporary WD
 resultsWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/Results/'
+resultsTidyWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/Results Tidy/'
 
 # Loading Table of Negative Outcome Results
 getNegativeOutcomesResults <- function(concept_id, file_location){
@@ -96,22 +98,18 @@ outcomeHR12 <- read.table(glue(resultsWD, 'dose_12/rem_main_analysis/outcome_hos
 outcomeHR3 <- read.table(glue(resultsWD, 'dose_3/rem_main_analysis/outcome_hosp_death_period_three.csv'),  sep=';', header = T) %>%
       mutate(OutcomeName = 'COVID-19 Hosp. or Death')
 
-bind_rows(getCalibratedResults(negOutcomes12, outcomeHR12, 'periodV1 14D+'),
+tidy_results <- bind_rows(getCalibratedResults(negOutcomes12, outcomeHR12, 'periodV1 14D+'),
           getCalibratedResults(negOutcomes12, outcomeHR12, 'periodV2 7D+'),
           getCalibratedResults(negOutcomes3, outcomeHR3, 'periodV3 14-60D'),
-          getCalibratedResults(negOutcomes3, outcomeHR3, 'periodV3 60+'))
+          getCalibratedResults(negOutcomes3, outcomeHR3, 'periodV3 60+')) %>%
+      mutate(estimate_ve = if_else(estimate>1, -(1-(1/estimate))*100, (1-estimate)*100),
+             conf.high_ve = if_else(conf.low>1, -(1-(1/conf.low))*100, (1-conf.low)*100),
+             conf.low_ve= if_else(conf.high>1, -(1-(1/conf.high))*100, (1-conf.high)*100))
 
-model <- fitSystematicErrorModel(log(negOutcomes12$estimate), negOutcomes12_toModel$std.error, rep(0,nrow(negOutcomes12_toModel))) # use NCO to fit model
-result_full <- calibrateConfidenceInterval(log(outcomeHR12$estimate), outcomeHR12$std.error, model, ciWidth = 0.95) # use model to calibrate treatment estimates
-outcomeHR_full_cal12 <- outcomeHR12[,1:2] %>% cbind(exp(result_full))
-colnames(outcomeHR_full_cal12)[3:6] <- c("HR","low95", "upper95","SE")
+# Exporting To Excel
+wb <- createWorkbook()
+addWorksheet(wb, "negative_outcomes")
+writeData(wb, sheet = 1, x = tidy_results)
+saveWorkbook(wb, glue(resultsTidyWD, 'neg_outcomes_tidy.xlsx'), overwrite = TRUE)
 
-# Calibration for 3rd dose
-
-
-model <- fitSystematicErrorModel(log(negOutcomes3_toPlot$estimate), negOutcomes3_toPlot$std.error, rep(0,nrow(negOutcomes3_toPlot))) # use NCO to fit model
-result_full <- calibrateConfidenceInterval(log(outcomeHR3$estimate), outcomeHR3$std.error, model, ciWidth = 0.95) # use model to calibrate treatment estimates
-outcomeHR_full_cal3 <- outcomeHR3[,1:2] %>% cbind(exp(result_full))
-colnames(outcomeHR_full_cal3)[3:6] <- c("HR","low95", "upper95","SE")
-
-
+             
