@@ -77,7 +77,7 @@ getCalibratedResults <- function(neg_outcomes_dataframe, main_results_dataframe,
       main_results_dataframe <- main_results_dataframe %>%
             filter(term == term_to_filter) %>% drop_na()
       
-      model <- fitSystematicErrorModel(log(neg_outcomes_dataframe$estimate), main_results_dataframe$std.error, rep(0,nrow(neg_outcomes_dataframe))) # use NCO to fit model
+      model <- fitSystematicErrorModel(log(neg_outcomes_dataframe$estimate), neg_outcomes_dataframe$std.error, rep(0,nrow(neg_outcomes_dataframe))) # use NCO to fit model
       result_full <- calibrateConfidenceInterval(log(main_results_dataframe$estimate), main_results_dataframe$std.error, model, ciWidth = 0.95) # use model to calibrate treatment estimates
       
       result_full <- result_full %>%
