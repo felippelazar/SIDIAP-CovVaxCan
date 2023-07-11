@@ -40,6 +40,7 @@ g_voc <- covidVOC %>%
       arrange(date_variant, week_variant, desc(prop_week_variant)) %>%
       distinct(week_variant, name_variant, .keep_all=T) %>% 
       filter(date_variant >= dmy('27/12/2020')) %>%
+      filter(date_variant <= dmy('30/06/2022')) %>%
       mutate(date_variant = floor_date(date_variant, "weeks", week_start = 1)) %>%
       mutate(name_variant = factor(name_variant, levels = c('Other VOC', 'Delta VOC', 'Omicron VOC'))) %>%
       ggplot(aes(x = as.Date(date_variant), y = prop_week_variant, fill = name_variant)) + 
