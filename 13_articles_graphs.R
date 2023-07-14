@@ -47,7 +47,8 @@ g_voc <- covidVOC %>%
       geom_col(position = 'fill', width = 8) + theme_bw() + 
       theme(legend.position = 'top') + 
       labs(x = '', y = 'weekly proportion (%)', fill = '') + 
-      scale_fill_manual(values = c('#B1746F','#FFB547', '#725663')) 
+      scale_fill_manual(values = c('#B1746F','#FFB547', '#725663'), 
+                        labels = c('Ancestor', 'Delta', 'Omicron')) 
 
 # Cumulative Vaccine Rollout
 vac_rollout <- read.table(glue(mainWD, 'Results/descriptive_until_2022/vacc_cum_rollout_by_dose.csv'), 
