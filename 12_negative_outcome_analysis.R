@@ -68,6 +68,10 @@ lay = rbind(c(1, 3), c(2, 4))
 tt <- grid.arrange(v1_14, v2_7, v3_14, v3_60, 
                    layout_matrix = lay)
 
+tt <- egg::ggarrange(v1_14, v2_7, v3_14, v3_60, ncol = 2,
+                     labels = c('A', 'B', 'C', 'D'),
+                     label.args = list(gp=gpar(fontface='bold', fontsize=30), x=unit(2,"line"), hjust=-0.5, vjust=1.5))
+
 ggsave("Figures/NegOutcomes_CalibrationPlot.png", plot = tt, height = 260, width = 260, units = "mm", dpi = "print")
 
 # Loading Main Outcome Results

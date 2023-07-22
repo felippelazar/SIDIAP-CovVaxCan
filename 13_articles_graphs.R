@@ -6,7 +6,8 @@ library(ggplot2)
 library(lubridate)
 require(grid)
 library(gridExtra)
-source('utils.R')
+library(egg)
+library(glue)
 
 # Setting WD
 mainWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/'
@@ -73,10 +74,9 @@ g_covid <- covid_cases %>%
       labs(x = '', y = 'number of COVID-19 cases (N)', fill = '') + theme_bw() + 
       theme(legend.position = 'none')
 
-lay = rbind(c(1), c(2), c(3))
-
-tt <- grid.arrange(g_covid, g_voc, g_vac_rollout, 
-                   layout_matrix = lay)
+tt <- egg::ggarrange(g_covid, g_voc, g_vac_rollout, ncol = 1,
+              labels = c('A', 'B', 'C'),
+              label.args = list(gp=gpar(fontface='bold', fontsize=20), x=unit(2,"line"), hjust=-0.5, vjust=2))
 
 ggsave("Figures/figure_covid_vax.png", plot = tt, height = 260, width = 2*260/3, units = "mm", dpi = "print")
 
@@ -154,19 +154,22 @@ forest_sg_12 <- forest_table %>%
                  xlab = 'Vaccine Effectiveness',
                  plotwidth=unit(20, "cm"),
                  boxsize = .1) %>%
-      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.60))) %>%
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.5),
+                                    xlab  = gpar(cex = 0.5),
+                                    ticks = gpar(cex = 0.3))) %>%
       fp_decorate_graph(graph.pos = 2) %>%
       fp_set_zebra_style("#f9f9f9") %>%
       fp_set_style(box = c("black", "chocolate") %>% 
                          lapply(function(x) gpar(fill = x, col = x)),
                    default = gpar(vertices = TRUE)) %>%
       fp_insert_row(term = 'Age',  position = 1, is.summary = F) %>%
-      fp_insert_row(term = 'Gender',  position = 4, is.summary = F) %>%
+      fp_insert_row(term = 'Sex',  position = 4, is.summary = F) %>%
       fp_insert_row(term = 'Cancer Diagnosis Time',  position = 7, is.summary = F) %>%
       fp_insert_row(term = 'Metastatic Disease',  position = 10, is.summary = F) %>%
       fp_insert_row(term = 'Lung Cancer',  position = 13, is.summary = F) %>%
       fp_insert_row(term = 'Hemathological Cancer',  position = 16, is.summary = F) %>%
-      fp_insert_row(term = 'Variant of Concern',  position = 19, is.summary = F)
+      fp_insert_row(term = 'Variant of Concern',  position = 19, is.summary = F) %>%
+      fp_insert_row(term = 'A. Initial Vaccination Scheme',  position = 1, is.summary = T)
 
 
 file_forest <- paste(mainWD, 'Results/dose_3/rem_main_analysis', 'subgroup_outcome_hosp_death_three_periods.csv', sep = '/')
@@ -202,36 +205,40 @@ forest_sg_3 <- forest_table %>%
                  xlab = 'Vaccine Effectiveness',
                  plotwidth=unit(20, "cm"),
                  boxsize = .1) %>%
-      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.60))) %>%
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.5),
+                                    xlab  = gpar(cex = 0.5),
+                                    ticks = gpar(cex = 0.3))) %>%
       fp_decorate_graph(graph.pos = 2) %>%
       fp_set_zebra_style("#f9f9f9") %>%
       fp_set_style(box = c("black", "chocolate") %>% 
                          lapply(function(x) gpar(fill = x, col = x)),
                    default = gpar(vertices = TRUE)) %>%
       fp_insert_row(term = 'Age',  position = 1, is.summary = F) %>%
-      fp_insert_row(term = 'Gender',  position = 4, is.summary = F) %>%
+      fp_insert_row(term = 'Sex',  position = 4, is.summary = F) %>%
       fp_insert_row(term = 'Cancer Diagnosis Time',  position = 7, is.summary = F) %>%
       fp_insert_row(term = 'Metastatic Disease',  position = 10, is.summary = F) %>%
       fp_insert_row(term = 'Lung Cancer',  position = 13, is.summary = F) %>%
       fp_insert_row(term = 'Hemathological Cancer',  position = 16, is.summary = F) %>%
       fp_insert_row(term = 'Variant of Concern',  position = 19, is.summary = F) %>%
-      fp_insert_row(term = 'Previous mRNA Vaccine',  position = 22, is.summary = F)
-
-library(grid)
+      fp_insert_row(term = 'Previous mRNA Vaccine',  position = 22, is.summary = F) %>%
+      fp_insert_row(term = 'B. Booster Vaccination',  position = 1, is.summary = T)
 
 # Exporting Combined Graph
-pdf('Figures/forest_plot_subgroups_combined.pdf', width = 9, height = 5)
+pdf('Figures/forest_plot_subgroups_combined.pdf', width = 6, height = 4)
 grid.newpage()
-borderWidth <- unit(1, "pt")
-width <- unit(convertX(unit(1, "npc") - borderWidth, unitTo = "npc", valueOnly = TRUE)/2, "npc")
-pushViewport(viewport(layout = grid.layout(nrow = 1, ncol = 3, widths = unit.c(width, borderWidth, width))))
-pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 1))
+# Creating Layout
+gridView <- viewport(layout = grid.layout(nrow = 1, ncol = 2))
+pushViewport(gridView)
+
+# Creating Plot 1
+plotOne <- viewport(layout.pos.row = 1, layout.pos.col = 1)
+pushViewport(plotOne)
 forest_sg_12
 upViewport()
-pushViewport(viewport(layout.pos.row = 1,layout.pos.col = 2))
-grid.rect(gp = gpar(fill = "white", col = "white"))
-upViewport()
-pushViewport(viewport(layout.pos.row = 1,layout.pos.col = 3))
+
+# Creating Plot 2
+plotTwo <- viewport(layout.pos.row = 1,layout.pos.col = 2)
+pushViewport(plotTwo)
 forest_sg_3
 upViewport(2)
 dev.off()
@@ -299,6 +306,7 @@ graph_main_12 <- forest_table %>%
             term == 'V2 7D+' ~ '  Fully Vaccinated',
             term == 'no-vax' ~ '  Unvaccinated',
       )) %>%
+      mutate(est_ve.conf.interval = ifelse(mean == 0, 'Reference', est_ve.conf.interval)) %>%
       forestplot(labeltext = c(term, n_event, est_ve.conf.interval),
                  vertices = TRUE,
                  clip = c(-20, 100),
@@ -307,9 +315,10 @@ graph_main_12 <- forest_table %>%
                  align = c("l", 'c'),
                  xticks = c(-20, 0, 50, 100),
                  xlab = 'Vaccine Effectiveness',
-                 plotwidth=unit(20, "cm"),
                  boxsize = .1) %>%
-      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.75))) %>%
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.55),
+                                    xlab  = gpar(cex = 0.5),
+                                    ticks = gpar(cex = 0.3))) %>%
       fp_decorate_graph(graph.pos = 3) %>%
       fp_set_zebra_style("#f9f9f9") %>%
       fp_insert_row(term = 'Hospitalization', 
@@ -317,7 +326,9 @@ graph_main_12 <- forest_table %>%
                     position = 1, is.summary = T) %>%
       fp_insert_row('Death', position = 5, is.summary = T) %>%
       fp_insert_row('Hosp. or Death', position = 9, is.summary = T) %>%
-      fp_insert_row('Hosp. or Death - All Periods', position = 13, is.summary = T)
+      fp_insert_row('Hosp. or Death - All Periods', position = 13, is.summary = T) %>%
+      fp_add_header(term = 'A. Initial Vaccination Scheme',  position = 1, is.summary = T) %>%
+      fp_add_lines("lightgray")
 
 file_forest <- list.files(paste0(mainWD, 'Results/dose_3/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
 forest_table <- create_forest_table_main_results(file_forest)
@@ -334,6 +345,7 @@ graph_main_3 <- forest_table %>%
             term == 'V3 60+' ~ '  60 or more days after booster',
             term == 'no-vax' ~ '  Unvaccinated',
       )) %>%
+      mutate(est_ve.conf.interval = ifelse(mean == 0, 'Reference', est_ve.conf.interval)) %>%
       forestplot(labeltext = c(term, n_event, est_ve.conf.interval),
                  vertices = TRUE,
                  clip = c(-20, 100),
@@ -342,9 +354,10 @@ graph_main_3 <- forest_table %>%
                  align = c("l", 'c'),
                  xticks = c(-20, 0, 50, 100),
                  xlab = 'Vaccine Effectiveness',
-                 plotwidth=unit(20, "cm"),
                  boxsize = .1) %>%
-      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.75))) %>%
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.55),
+                                    xlab  = gpar(cex = 0.5),
+                                    ticks = gpar(cex = 0.3))) %>%
       fp_decorate_graph(graph.pos = 3) %>%
       fp_set_zebra_style("#f9f9f9") %>%
       fp_insert_row(term = 'Hospitalization', 
@@ -352,18 +365,21 @@ graph_main_3 <- forest_table %>%
                     position = 1, is.summary = T) %>%
       fp_insert_row('Death', position = 5, is.summary = T) %>%
       fp_insert_row('Hosp. or Death', position = 9, is.summary = T) %>%
-      fp_insert_row('Hosp. or Death - All Periods', position = 13, is.summary = T)
+      fp_insert_row('Hosp. or Death - All Periods', position = 13, is.summary = T) %>%
+      fp_add_header(term = 'B. Booster Vaccination',  position = 1, is.summary = T) %>%
+      fp_add_lines("lightgray")
 
 # Exporting Combined Graph
-pdf('Figures/forest_plot_main_groups_combined.pdf', width = 6, height = 9)
+pdf('Figures/forest_plot_main_groups_combined.pdf', width = 5, height = 7)
 grid.newpage()
-borderWidth <- unit(0.001, "pt")
-width <- unit(convertX(unit(1, "npc") - borderWidth, unitTo = "npc", valueOnly = TRUE)/2, "npc")
-pushViewport(viewport(layout = grid.layout(nrow = 2, ncol = 1, widths = unit.c(width, borderWidth, width))))
+gridLayout <- viewport(layout = grid.layout(nrow = 2, ncol = 1, heights = c(1.15, 1)))
+pushViewport(gridLayout)
 pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 1))
+grid.rect()
 graph_main_12
 upViewport()
-pushViewport(viewport(layout.pos.row = 2,layout.pos.col = 1))
+pushViewport(viewport(layout.pos.row = 2,layout.pos.col = 1, width = 0.5))
+grid.rect()
 graph_main_3
 upViewport(1)
 dev.off()
