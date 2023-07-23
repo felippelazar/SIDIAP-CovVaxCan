@@ -384,4 +384,165 @@ graph_main_3
 upViewport(1)
 dev.off()
 
+# Plotting Both Together Main Results
+file_forest_rem_12 <- list.files(paste0(mainWD, 'Results/dose_12/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
+forest_table_rem_12 <- create_forest_table_main_results(file_forest_rem_12)
+file_forest_rem_3 <- list.files(paste0(mainWD, 'Results/dose_3/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
+forest_table_rem_3 <- create_forest_table_main_results(file_forest_rem_3)
+
+forest_table <- bind_rows(forest_table_rem_12 %>% arrange(outcome), forest_table_rem_3 %>% arrange(outcome))
+
+graph_main_123 <- forest_table %>% 
+      mutate(term = case_when(
+            term == 'V1 0-14D' ~ '  0 - 13 days after dose one',
+            term == 'V1 14-59D' ~ '  14 - 59 days after dose one',
+            term == 'V1 60D+' ~ '  60 or more days after dose one',
+            term == 'V1V2 0-13D' ~ '  0 - 13 days after dose two',
+            term == 'V1V2 14-59D' ~ '  14 - 59 days after dose two',
+            term == 'V1V2 60-89D' ~ '  60 - 89 days after dose two',
+            term == 'V1V2 90-120D' ~ '  90 - 119 days after dose two',
+            term == 'V1V2 120D+' ~ '  120 or more days after dose two',
+            term == 'V1 14D+' ~ '  Partially Vaccinated',
+            term == 'V2 7D+' ~ '  Fully Vaccinated',
+            term == 'V3 0-14D' ~ '  0 - 13 days after booster',
+            term == 'V3 14-28D' ~ '  14 - 27 days after booster',
+            term == 'V3 28-60D' ~ '  28 - 59 days after booster',
+            term == 'V3 60-120' ~ '  60 - 119 days after booster',
+            term == 'V3 120+' ~ '  120 or more days after booster',
+            term == 'V3 14-60D' ~ '  14 - 59 days after booster',
+            term == 'V3 60+' ~ '  60 or more days after booster',
+            term == 'no-vax' ~ '  Unvaccinated',
+      )) %>%
+      mutate(est_ve.conf.interval = ifelse(mean == 0, 'Reference', est_ve.conf.interval)) %>%
+      forestplot(labeltext = c(term, n_event, est_ve.conf.interval),
+                 vertices = TRUE,
+                 clip = c(-20, 100),
+                 xlog = F,
+                 zero = 0,
+                 align = c("l", 'c'),
+                 xticks = c(-20, 0, 50, 100),
+                 xlab = 'Vaccine Effectiveness',
+                 boxsize = .1) %>%
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.55),
+                                    xlab  = gpar(cex = 0.5),
+                                    ticks = gpar(cex = 0.3))) %>%
+      fp_decorate_graph(graph.pos = 3) %>%
+      fp_set_zebra_style("#f9f9f9") %>%
+      fp_insert_row(term = 'Hospitalization', 
+                    n_event = 'No Events', 
+                    position = 1, is.summary = T) %>%
+      fp_insert_row('Death', position = 5, is.summary = T) %>%
+      fp_insert_row('Hosp. or Death', position = 9, is.summary = T) %>%
+      fp_insert_row('Hosp. or Death - All Periods', position = 13, is.summary = T) %>%
+      fp_add_header(term = 'A. Initial Vaccination Scheme',  position = 1, is.summary = T) %>%
+      fp_insert_row(term = 'Hospitalization', 
+                    n_event = 'No Events', 
+                    position = 24, is.summary = T) %>%
+      fp_insert_row('Death', position = 28, is.summary = T) %>%
+      fp_insert_row('Hosp. or Death', position = 32, is.summary = T) %>%
+      fp_insert_row('Hosp. or Death - All Periods', position = 36, is.summary = T) %>%
+      fp_add_header(term = 'B. Booster Vaccination',  position = 24, is.summary = T) %>%
+      fp_add_header(term = '',  position = 24, is.summary = T) %>%
+      fp_add_lines("lightgray")
+
+pdf('Figures/forest_plot_main_results_123.pdf', width = 6, height = 7)
+graph_main_123
+dev.off()
+
 # Plotting Sensitivity Analysis
+# Creating Main Table Results 
+create_forest_table_sens_results <- function(files_forest){
+      
+      # Getting Files Results
+      temp_table <- read.csv(files_forest, row.names=NULL, header = T, sep = ';') %>% 
+            mutate(analysis = files_forest)
+      
+      # Binding Tables
+      temp_table <- temp_table %>%
+            mutate(term = str_replace(term, 'period', '')) %>%
+            mutate(estimate = ifelse(reference_row == TRUE, 1, estimate),
+                   conf.low = ifelse(reference_row == TRUE, 1, conf.low),
+                   conf.high = ifelse(reference_row == TRUE, 1, conf.high)) %>%
+            mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', estimate, conf.low, conf.high)) %>%
+            mutate(estimate_ve = if_else(estimate>1, 
+                                         -(1-(1/estimate))*100, (1-estimate)*100),
+                   conf.low_ve = if_else(conf.low>1, 
+                                         -(1-(1/conf.low))*100, (1-conf.low)*100),
+                   conf.high_ve= if_else(conf.high>1, 
+                                         -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve))
+      
+      forest_table <- temp_table %>%
+            select(analysis, n_event,
+                   term, estimate, conf.low, conf.high, p.value, est.conf.interval,
+                   estimate_ve, conf.low_ve, conf.high_ve, est_ve.conf.interval) %>%
+            rename(mean = estimate_ve,
+                   lower = conf.high_ve,
+                   upper = conf.low_ve) %>%
+            mutate(p.value = sprintf('%.3f', p.value))
+      
+      
+      return(forest_table)
+}
+
+
+files_sens_results <- list(
+      'Results/dose_12/rem_main_analysis/outcome_hosp_death_period_three.csv' = '1.1 main analysis',
+      'Results/dose_12/sub_group_cancer_strict/outcome_hosp_death_period_three.csv' = '1.2 tested patients',
+      'Results/dose_12/sub_group_tested_patients/outcome_hosp_death_period_three.csv' = '1.3 cancer strict', 
+      'Results/dose_12/sub_group_covid_lab/outcome_hosp_death_period_three.csv' = '1.4 covid lab',
+      'Results/dose_12/sub_group_hosp_3_days/outcome_hosp_death_period_three.csv' = '1.5 hosp 3 days',
+      'Results/dose_12/sub_group_not_jansen/outcome_hosp_death_period_three.csv' = '1.6 not jansen',
+      'Results/dose_3/rem_main_analysis/outcome_hosp_death_period_three.csv' = '3.1 main analysis',
+      'Results/dose_3/sub_group_cancer_strict/outcome_hosp_death_period_three.csv' = '3.2 tested patients',
+      'Results/dose_3/sub_group_tested_patients/outcome_hosp_death_period_three.csv' = '3.3 cancer strict', 
+      'Results/dose_3/sub_group_covid_lab/outcome_hosp_death_period_three.csv' = '3.4 covid lab',
+      'Results/dose_3/sub_group_hosp_3_days/outcome_hosp_death_period_three.csv' = '3.5 hosp 3 days')
+
+file_forest <- paste(mainWD, names(files_sens_results), sep='')
+names(file_forest) <- files_sens_results
+
+forest_tables <- lapply(file_forest, create_forest_table_sens_results)
+forest_table <- do.call(bind_rows, forest_tables)
+
+graph_sens_results <- forest_table %>% 
+      mutate(term = case_when(
+            term == 'V1 14D+' ~ '  Partially Vaccinated',
+            term == 'V2 7D+' ~ '  Fully Vaccinated',
+            term == 'no-vax' ~ '  Unvaccinated',
+            term == 'V3 14-60D' ~ '  14 - 59 days after booster',
+            term == 'V3 60+' ~ '  60 or more days after booster',
+      )) %>%
+      mutate(est_ve.conf.interval = ifelse(mean == 0, 'Reference', est_ve.conf.interval)) %>%
+      forestplot(labeltext = c(term, n_event, est_ve.conf.interval),
+                 vertices = TRUE,
+                 clip = c(-20, 100),
+                 xlog = F,
+                 zero = 0,
+                 align = c("l", 'c'),
+                 xticks = c(-20, 0, 50, 100),
+                 xlab = 'Vaccine Effectiveness',
+                 boxsize = .1) %>%
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.50),
+                                    xlab  = gpar(cex = 0.5),
+                                    ticks = gpar(cex = 0.3))) %>%
+      fp_decorate_graph(graph.pos = 3) %>%
+      fp_set_zebra_style("#f9f9f9") %>%
+      fp_insert_row(term = 'Main Results', n_event = 'No Events', position = 1, is.summary = T) %>%
+      fp_insert_row('Tested Patients', position = 5, is.summary = T) %>%
+      fp_insert_row('Strict Cancer Diagnosis', position = 9, is.summary = T) %>%
+      fp_insert_row('Laboratory COVID-19', position = 13, is.summary = T) %>%
+      fp_insert_row('COVID-19 up to 3 days after admission', position = 17, is.summary = T) %>%
+      fp_insert_row('Excluding Jansens Vaccine', position = 21, is.summary = T) %>%
+      fp_insert_row(term = 'Main Results', n_event = 'No Events', position = 25, is.summary = T) %>%
+      fp_insert_row('Tested Patients', position = 29, is.summary = T) %>%
+      fp_insert_row('Strict Cancer Diagnosis', position = 33, is.summary = T) %>%
+      fp_insert_row('Laboratory COVID-19', position = 37, is.summary = T) %>%
+      fp_insert_row('COVID-19 up to 3 days after admission', position = 41, is.summary = T) %>%
+      fp_insert_row(term = 'A. Initial Scheme Vaccination',  position = 1, is.summary = T) %>%
+      fp_insert_row(term = 'B. Booster Vaccination',  position = 26, is.summary = T) %>%
+      fp_add_lines("lightgray")
+
+pdf('Figures/forest_plot_sens_results.pdf', width = 6, height = 7)
+graph_sens_results 
+dev.off()
