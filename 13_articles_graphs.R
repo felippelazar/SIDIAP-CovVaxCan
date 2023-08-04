@@ -8,7 +8,7 @@ require(grid)
 library(gridExtra)
 library(egg)
 library(glue)
-
+library(forestplot)
 # Setting WD
 mainWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/'
 
@@ -505,7 +505,8 @@ names(file_forest) <- files_sens_results
 forest_tables <- lapply(file_forest, create_forest_table_sens_results)
 forest_table <- do.call(bind_rows, forest_tables)
 
-graph_sens_results <- forest_table %>% 
+graph_sens_results <- 
+      forest_table %>% 
       mutate(term = case_when(
             term == 'V1 14D+' ~ '  Partially Vaccinated',
             term == 'V2 7D+' ~ '  Fully Vaccinated',
@@ -533,7 +534,7 @@ graph_sens_results <- forest_table %>%
       fp_insert_row('Strict Cancer Diagnosis', position = 9, is.summary = T) %>%
       fp_insert_row('Laboratory COVID-19', position = 13, is.summary = T) %>%
       fp_insert_row('COVID-19 up to 3 days after admission', position = 17, is.summary = T) %>%
-      fp_insert_row('Excluding Jansens Vaccine', position = 21, is.summary = T) %>%
+      fp_insert_row('Excluding Jansen Vaccine', position = 21, is.summary = T) %>%
       fp_insert_row(term = 'Main Results', n_event = 'No Events', position = 25, is.summary = T) %>%
       fp_insert_row('Tested Patients', position = 29, is.summary = T) %>%
       fp_insert_row('Strict Cancer Diagnosis', position = 33, is.summary = T) %>%
@@ -541,6 +542,7 @@ graph_sens_results <- forest_table %>%
       fp_insert_row('COVID-19 up to 3 days after admission', position = 41, is.summary = T) %>%
       fp_insert_row(term = 'A. Initial Scheme Vaccination',  position = 1, is.summary = T) %>%
       fp_insert_row(term = 'B. Booster Vaccination',  position = 26, is.summary = T) %>%
+      fp_insert_row(term = '',  position = 26, is.summary = T) %>%
       fp_add_lines("lightgray")
 
 pdf('Figures/forest_plot_sens_results.pdf', width = 6, height = 7)
