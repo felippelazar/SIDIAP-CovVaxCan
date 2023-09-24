@@ -111,8 +111,8 @@ create_forest_table_subgroup <- function(file_forest){
             mutate(contrast = case_when(
                   contrast == '(V1 14D+) - (no-vax)' ~ 'Partially Vaccinated',
                   contrast == '(V2 7D+) - (no-vax)' ~ 'Fully Vaccinated',
-                  contrast == '(V3 14-60D) - (no-vax)' ~ 'Booster 14D-60D',
-                  contrast == '(V3 60+) - (no-vax)' ~ 'Booster 60D+'
+                  contrast == '(V3 14-60D) - (no-vax)' ~ 'Booster 14 - 60 days',
+                  contrast == '(V3 60+) - (no-vax)' ~ 'Booster 60 days+'
             ))
       
       return(forest_table)
@@ -154,7 +154,7 @@ forest_sg_12 <- forest_table %>%
                  xlab = 'Vaccine Effectiveness',
                  plotwidth=unit(20, "cm"),
                  boxsize = .1) %>%
-      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.5),
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.4),
                                     xlab  = gpar(cex = 0.5),
                                     ticks = gpar(cex = 0.3))) %>%
       fp_decorate_graph(graph.pos = 2) %>%
@@ -205,7 +205,7 @@ forest_sg_3 <- forest_table %>%
                  xlab = 'Vaccine Effectiveness',
                  plotwidth=unit(20, "cm"),
                  boxsize = .1) %>%
-      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.5),
+      fp_set_style(txt_gp = fpTxtGp(label = gpar(cex=0.4),
                                     xlab  = gpar(cex = 0.5),
                                     ticks = gpar(cex = 0.3))) %>%
       fp_decorate_graph(graph.pos = 2) %>%
@@ -534,7 +534,7 @@ graph_sens_results <-
       fp_insert_row('Strict Cancer Diagnosis', position = 9, is.summary = T) %>%
       fp_insert_row('Laboratory COVID-19', position = 13, is.summary = T) %>%
       fp_insert_row('COVID-19 up to 3 days after admission', position = 17, is.summary = T) %>%
-      fp_insert_row('Excluding Jansen Vaccine', position = 21, is.summary = T) %>%
+      fp_insert_row('Excluding Ad26.COV2.S Vaccine', position = 21, is.summary = T) %>%
       fp_insert_row(term = 'Main Results', n_event = 'No Events', position = 25, is.summary = T) %>%
       fp_insert_row('Tested Patients', position = 29, is.summary = T) %>%
       fp_insert_row('Strict Cancer Diagnosis', position = 33, is.summary = T) %>%
