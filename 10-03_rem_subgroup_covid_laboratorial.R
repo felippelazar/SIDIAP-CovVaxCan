@@ -361,7 +361,7 @@ tidyInteractionCox <- function(interaction_var, df, outcome){
       m_obs <- df %>%
             mutata(ttotal = tstop - tstart) %>%
             group_by(across(c(interaction_var, 'period'))) %>%
-            summarise(n_events = sum(across('status') == 2), n_obs = n(), exp_time = sum(across('ttotal')))
+            summarise(n_events = sum(across('outcome') == 2), n_obs = n(), exp_time = sum(across('ttotal')))
       
       tidy_contrasts <- m_contrasts %>%
             mutate(contrast2 = as.character(contrast)) %>%
