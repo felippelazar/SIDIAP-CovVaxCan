@@ -1,5 +1,5 @@
 # ============================================================================ #
-# 7. REM Analysis - COVID-19 Vaccine 1st and 2nd     #
+# 11. REM Analysis - COVID-19 Vaccine 1st and 2nd -Hosp Test 14d bef 3d after  #
 # Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
 # This code was adapted from Rachel Mulholland <rachel.mulholland@ed.ac.uk> and
 #                            Chris Robertson <chrisrobertson@nhs.net>
@@ -17,7 +17,7 @@ source('utils.R')
 library(emmeans)
 library(broom.helpers)
 library(tidycmprsk)
-library(ggsurvfit2)
+library(ggsurvfit)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)

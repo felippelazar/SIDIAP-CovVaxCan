@@ -1,5 +1,5 @@
 # ============================================================================ #
-# 11. REM Analysis - COVID-19 Vaccine 1st and 2nd - Test Negative Outcomes     #
+# 12. REM Analysis - COVID-19 Vaccine 1st and 2nd - Test Negative Outcomes     #
 # Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
 # ============================================================================ #
 

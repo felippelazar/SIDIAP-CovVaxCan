@@ -1,3 +1,8 @@
+# ============================================================================ #
+# 13. REM Analysis - Negative Outcomes Analysis                                #
+# Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
+# ============================================================================ #
+
 library(EmpiricalCalibration)
 library(here)
 library(glue)

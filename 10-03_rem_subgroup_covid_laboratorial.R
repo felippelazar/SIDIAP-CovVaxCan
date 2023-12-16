@@ -13,7 +13,7 @@ library(survminer)
 source('utils.R')
 library(broom.helpers)
 library(tidycmprsk)
-library(ggsurvfit2)
+library(ggsurvfit)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)

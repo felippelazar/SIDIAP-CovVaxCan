@@ -1,5 +1,5 @@
 # ============================================================================ #
-# 7. REM Analysis - COVID-19 Vaccine 3rd dose - Hosp Test until 3 day          #
+# 11. REM Analysis - COVID-19 Vaccine 3rd dose - Hosp Test 14d bef 3d after    #
 # Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
 # ============================================================================ #
 
@@ -13,7 +13,7 @@ library(survminer)
 source('utils.R')
 library(broom.helpers)
 library(tidycmprsk)
-library(ggsurvfit2)
+library(ggsurvfit)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)

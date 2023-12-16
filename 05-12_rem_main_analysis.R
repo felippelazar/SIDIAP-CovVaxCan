@@ -17,7 +17,7 @@ source('utils.R')
 library(emmeans)
 library(broom.helpers)
 library(tidycmprsk)
-library(ggsurvfit22)
+library(ggsurvfit)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)

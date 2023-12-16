@@ -1,5 +1,10 @@
+# ============================================================================ #
+# 14. REM Analysis - Article Graphs                                            #
+# Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
+# ============================================================================ #
+
+
 library(tidyverse)
-library(openxlsx)
 library(here)
 library(readxl)
 library(ggplot2)
@@ -9,6 +14,7 @@ library(gridExtra)
 library(egg)
 library(glue)
 library(forestplot)
+
 # Setting WD
 mainWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/'
 

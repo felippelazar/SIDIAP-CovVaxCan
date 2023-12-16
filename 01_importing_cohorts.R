@@ -4,10 +4,17 @@
 # ============================================================================ #
 
 # Setting Up Database Connection
-# Installing Packages
-# install.packages(c("DBI","RPostgres","dplyr","dbplyr","usethis", "DatabaseConnector","here", "CDMConnector"))
-# install.packages("remotes")
-# remotes::install_github("ohdsi/CirceR") 
+# Installing Packages (for all analysis)
+pckgs_installed <- installed.packages()[, 'Package'] |> unname()
+pckgs_needed <- c("DBI", "RPostgres", "CDMConnector", "tidyverse", "readxl", "here", 
+                   "gtsummary", "tidylog", "survminer", "tableone", "survival", "remotes",
+                  "broom.helpers", "emmeans", "tidycmprsk", "ggsurvfit", "glue", 
+                  "EmpiricalCalibration", "openxlsx", "ggplot2", "lubridate", "grid", "gridExtra", 
+                  "egg", "forestplot")
+
+pckgsToInstall <- pckgs_needed[!pckgs_needed %in% pckgs_installed]
+install.packages(pckgsToInstall)
+if(!'CirceR' %in% pckgs_installed){remotes::install_github("ohdsi/CirceR")}
 
 # Connecting Database 
 library(DBI)
@@ -17,6 +24,8 @@ library(tidyverse)
 library(readxl)
 library(here)
 library(CirceR)
+
+# Creating Variables in Environment
 # usethis::edit_r_environ()
 
 # Setting Connection - Credentials and Database 
