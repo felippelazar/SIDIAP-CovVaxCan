@@ -498,18 +498,18 @@ cancerMerged <- cancerCohort %>%
   left_join(cancerDiagnosisWide, by = c('subject_id' = 'subject_id')) %>%
   left_join(cancerDiagnosisGroupWide, by = c('subject_id' = 'subject_id'))
 
-# rm(covidCancerDiagnosisWide)
-# rm(covidCancerHospWide)
-# rm(covidSevereHospWide)
-# rm(cancerVaccineWide)
-# rm(cancerCCIWide)
-# rm(medea2011)
-# rm(medea2001)
-# rm(careHome)
-# rm(cancerCovidTestsWide)
-# rm(cancerVisitsWide)
-# rm(cancerDiagnosisWide)
-# rm(cancerDiagnosisGroupWide)
+rm(covidCancerDiagnosisWide)
+rm(covidCancerHospWide)
+rm(covidSevereHospWide)
+rm(cancerVaccineWide)
+rm(cancerCCIWide)
+rm(medea2011)
+rm(medea2001)
+rm(careHome)
+rm(cancerCovidTestsWide)
+rm(cancerVisitsWide)
+rm(cancerDiagnosisWide)
+rm(cancerDiagnosisGroupWide)
 
 # CREATING DATAFRAMES FOR SUB-GROUP ANALYSIS
 # Cancer Strict Definition
@@ -527,8 +527,8 @@ cancerStrict <- cancerStrict %>%
 
 cancerIDS_strict <- cancerStrict %>% pull(subject_id) %>% unique()
 
-# ID5 - [CovCanVac] COVID-Diagnosis Hospitalized (Clinical or Laboratorial), N = 103,856
-# Importing Cohort from Results Table (ID = 5)
+# ID11 - [CovCanVac] COVID-Diagnosis Hospitalized (Clinical or Laboratorial) up to 3 days after admission
+# Importing Cohort from Results Table (ID = 11)
 covidHosp_subgroup <- cdm[[tableResults]] %>% filter(cohort_definition_id == 11) %>% collect()
 
 # Dropping Duplicates and Couting Number of Hospitalizations
@@ -618,3 +618,60 @@ covidCancerDiagnosisWide_subgroup <- covidCancerDiagnosis_subgroup %>%
 
 rm(covidDiagnosis_subgroup)
 rm(covidCancerDiagnosis_subgroup)
+
+# Subgroup - 14 Days before AND up to 3 days after (Hospitalization)
+# ID13 - [CovCanVac] COVID-Diagnosis Hospitalized (Clinical or Laboratorial) 14 days before AND up to 3 days after admission
+# Importing Cohort from Results Table (ID = 11)
+covidHosp_subgroup <- cdm[[tableResults]] %>% filter(cohort_definition_id == 13) %>% collect()
+
+# Dropping Duplicates and Couting Number of Hospitalizations
+covidHosp_subgroup <- covidHosp_subgroup %>%
+      filter(subject_id %in% cancerIDS) %>%
+      distinct(subject_id, cohort_start_date, .keep_all = T) %>%
+      select(subject_id, cohort_start_date, cohort_end_date) %>%
+      rename(hosp_admission_date = cohort_start_date,
+             hosp_discharge_date = cohort_end_date) %>%
+      arrange(subject_id, hosp_admission_date) %>%
+      mutate(hosp_number = unlist(mapply(
+            function(len, val) if (val == 0) rep(0, len) else 1:len,
+            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values))) %>%
+      mutate(hosp_number = ifelse(is.na(hosp_number), NA, hosp_number)) %>%
+      mutate(hosp_duration = as.numeric(hosp_discharge_date - hosp_admission_date))
+
+# Joining with Cancer Diagnosis
+covidCancerHosp_subgroup <- cancerCohort %>%
+      left_join(covidHosp_subgroup, by = c('subject_id' = 'subject_id'))
+
+covidCancerHospWide_subgroup2 <- covidCancerHosp_subgroup %>%
+      pivot_wider(id_cols = subject_id, names_from = c('hosp_number'), 
+                  values_from = c('hosp_admission_date', 'hosp_discharge_date'),
+                  names_glue = "{.value}_{hosp_number}") %>%
+      select(-ends_with('_NA'))
+
+# ID6 - [CovCanVac] Hospitalization with MV, Tracheostomy or ECMO, N = 103,696
+# Importing Cohord from Results Table (ID = 6)
+covidSevere_subgroup <- cdm[[tableResults]] %>% filter(cohort_definition_id == 6) %>% collect()
+
+covidSevere_subgroup <- covidHosp_subgroup %>%
+      left_join(covidSevere_subgroup %>% rename(severe_covid_date = cohort_start_date) %>% select(subject_id, severe_covid_date),
+                by = c('subject_id' = 'subject_id')) %>%
+      filter(severe_covid_date >= hosp_admission_date & severe_covid_date <= hosp_discharge_date) %>%
+      distinct(subject_id, hosp_number, .keep_all = TRUE) %>%
+      select(subject_id, hosp_number, hosp_admission_date, hosp_discharge_date) %>%
+      arrange(subject_id, hosp_admission_date) %>%
+      mutate(hosp_number = unlist(mapply(
+            function(len, val) if (val == 0) rep(0, len) else 1:len,
+            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+
+covidSevereHospWide_subgroup2 <- cancerCohort %>%
+      left_join(covidSevere_subgroup, by = c('subject_id' = 'subject_id')) %>%
+      rename(hosp_severe_admission_date = hosp_admission_date,
+             hosp_severe_discharge_date = hosp_discharge_date) %>%
+      pivot_wider(id_cols = subject_id, names_from = c('hosp_number'), 
+                  values_from = c('hosp_severe_admission_date', 'hosp_severe_discharge_date'),
+                  names_glue = "{.value}_{hosp_number}") %>%
+      select(-ends_with('_NA'))
+
+rm(covidHosp_subgroup)
+rm(covidCancerHosp_subgroup)
+rm(covidSevere_subgroup)
