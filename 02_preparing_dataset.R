@@ -53,6 +53,7 @@ cdm[[tableResults]] %>% group_by(cohort_definition_id) %>%
 # ID10 - [CovCanVac] COVID-19 Testing PCR or Antigen (Excluding Antibody) - Positive Test, N = 1,894,489
 # ID11 - [CovCanVac] COVID-19 Hospitalization (Clinical or Laboratorial) - 21D.bef - 3D.aft, N = 104,770
 # ID12 - [CovCanVac] COVID-Diagnosis (Laboratorial Only), N = 2,025,854
+# ID13 - [CovCanVac] # ID11 - [CovCanVac] COVID-19 Hospitalization (Clinical or Laboratorial) - 14D.bef - 3D.aft
 
 #-- In the following steps, we will create a main cohort and many exposure dataframes which will be left joined with the main cohort
 #-- Creating main cohort and subjects demographics variables
