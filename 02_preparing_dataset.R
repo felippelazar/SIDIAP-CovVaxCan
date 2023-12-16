@@ -28,7 +28,6 @@ cdm_database_schema <-"omop22t2_cmbd"
 vocabulary_database_schema <-"omop22t2_cmbd"
 results_database_schema <- "results22t2_cmbd"
 tableResults <- 'covcanvac_cohorts'
-# tableResults2 <- 'covcanvac_cohorts_2'
 
 cdm <- CDMConnector::cdm_from_con(con = db,
                                   cdm_schema = cdm_database_schema,
