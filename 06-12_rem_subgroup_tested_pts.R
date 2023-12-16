@@ -541,20 +541,12 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
       broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
       write.table(here('Results', 'dose_12', 'sub_group_tested_patients', 'outcome_covid_period_all.csv'), sep = ';', row.names = F)
 
-# Sub-group Analysis 
 dfREM_covid <- tmerge_three_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
       data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
       broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
       write.table(here('Results', 'dose_12', 'sub_group_tested_patients', 'outcome_covid_period_three.csv'), sep = ';', row.names = F)
-
-temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_covid, outcome = 'outcome_covid')
-subgroup.temp.results <- do.call(bind_rows, temp.results)
-subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
-
-write.table(subgroup.temp.results,
-            here('Results', 'dose_12', 'sub_group_tested_patients', 'subgroup_outcome_covid_three_periods.csv'), sep = ';', row.names = F)
 
 #-- Outcome COVID-19 Hospitalization
 fit <- survfit22(Surv(outcome_hosp_time, outcome_hosp_status == 2) ~ tx_group, 
@@ -599,14 +591,6 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
       data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
       broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
       write.table(here('Results', 'dose_12', 'sub_group_tested_patients', 'outcome_hosp_period_three.csv'), sep = ';', row.names = F)
-
-# Subgroup Analysis
-temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_hosp, outcome = 'outcome_hosp')
-subgroup.temp.results <- do.call(bind_rows, temp.results)
-subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
-
-write.table(subgroup.temp.results,
-            here('Results', 'dose_12', 'sub_group_tested_patients', 'subgroup_outcome_hosp_three_periods.csv'), sep = ';', row.names = F)
 
 # Outcome Severe COVID-19 Hospitalization
 fit <- survfit2(Surv(outcome_hosp_severe_time, outcome_hosp_severe_status == 2) ~ tx_group, 
@@ -732,14 +716,6 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
       data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
       broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
       write.table(here('Results', 'dose_12', 'sub_group_tested_patients', 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
-
-# Subgroup Analysis
-temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_hosp_death, outcome = 'outcome_hosp_death')
-subgroup.temp.results <- do.call(bind_rows, temp.results)
-subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
-
-write.table(subgroup.temp.results,
-            here('Results', 'dose_12', 'sub_group_tested_patients', 'subgroup_outcome_hosp_death_three_periods.csv'), sep = ';', row.names = F)
 
 # Additional Analysis 
 # Non-COVID-death - Cause-specific Analysis
