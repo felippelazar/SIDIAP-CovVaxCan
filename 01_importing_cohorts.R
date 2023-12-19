@@ -48,7 +48,7 @@ cdm <- CDMConnector::cdm_from_con(con = db,
                                   write_schema = results_database_schema)
 
 # Reading JSON Files
-json_files <- readCohortSet(here('Cohorts', 'JSON'))
+json_files <- readCohortSet(here('Cohort Definitions', 'JSON'))
 
 # Creating Table Name for Exports
 tableResults <- 'covcanvac_cohorts'

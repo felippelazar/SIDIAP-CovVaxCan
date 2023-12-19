@@ -23,7 +23,7 @@ getNegativeOutcomesResults <- function(concept_id, file_location){
             mutate(ConceptId = concept_id))
 }
 
-NCO <- read_csv(file=here("NCO.csv"), show_col_types = FALSE) # File with the conditions chosen to assess residual confounding
+NCO <- read.csv(file=here("NCO.csv"), sep = ";") # File with the conditions chosen to assess residual confounding
 
 negOutcomes12 <- lapply(NCO$ConceptId, getNegativeOutcomesResults, glue(resultsWD, 'dose_12/negative outcomes/'))
 negOutcomes12 <- do.call(bind_rows, negOutcomes12)

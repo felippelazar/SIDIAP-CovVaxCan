@@ -112,7 +112,6 @@ eligibles_1st2nd <- list()
 
 #-- Create a loop for the jth day and perform matching
 # !! WARNING !!: Long run time
-detach(package:tidylog,unload=TRUE)
 for(j in 1:(length(date_list))){
   
   # j = 1

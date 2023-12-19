@@ -343,7 +343,7 @@ tidyInteractionCox <- function(interaction_var, df, outcome){
       m_contrasts <- confint(m_contrasts, type = 'wald') %>% as.tibble() 
       
       m_obs <- df %>%
-            mutata(ttotal = tstop - tstart) %>%
+            mutate(ttotal = tstop - tstart) %>%
             group_by(across(c(interaction_var, 'period'))) %>%
             summarise(n_events = sum(across('outcome') == 2), n_obs = n(), exp_time = sum(across('ttotal')))
       
@@ -351,8 +351,16 @@ tidyInteractionCox <- function(interaction_var, df, outcome){
             mutate(contrast2 = as.character(contrast)) %>%
             separate(col = 'contrast2', into = c('trt', 'ctrl'), sep = ' - ') %>%
             mutate(across(c('trt', 'ctrl'), ~ gsub('[()]', '', .x))) %>%
-            left_join(m_obs %>% rename_all(~ paste0('crtl.', .x)), by = c(interaction_var = paste0('crtl.', interaction_var), 'ctrl' = 'crtl.period')) %>%
-            left_join(m_obs %>% rename_all(~ paste0('trt.', .x)), by = c(interaction_var = paste0('trt.', interaction_var), 'trt' = 'trt.period')) %>%
+            left_join(m_obs %>% rename("crtl.n_events" = "n_events", 
+                                       "crtl.n_obs" = "n_obs", 
+                                       "crtl.exp_time" = "exp_time",
+                                       "ctrl" = "period"), 
+                      by = c(interaction_var, 'ctrl')) %>%
+            left_join(m_obs %>% rename("trt.n_events" = "n_events", 
+                                       "trt.n_obs" = "n_obs", 
+                                       "trt.exp_time" = "exp_time",
+                                       "trt" = "period"), 
+                      by = c(interaction_var, 'trt')) %>%
             rename('term' = all_of(interaction_var)) %>%
             mutate(term = as.character(term)) %>%
             mutate(model_AIC = m_aic, 
@@ -601,7 +609,7 @@ ggsave(here('Results', 'dose_12', 'rem_main_analysis', 'graph_time_outcome_hosp_
 
 #-- ANALYSIS
 #-- Outcome COVID-19 Infection
-fit <- survfit22(Surv(outcome_covid_time, outcome_covid_status == 2) ~ tx_group, 
+fit <- survfit2(Surv(outcome_covid_time, outcome_covid_status == 2) ~ tx_group, 
                data = dfREMlong)
 
 saveRDS(fit, here('Results', 'dose_12', 'rem_main_analysis', 'survfit2_outcome_covid.RDS'))
@@ -645,7 +653,7 @@ write.table(subgroup.temp.results,
             here('Results', 'dose_12', 'rem_main_analysis', 'subgroup_outcome_covid_three_periods.csv'), sep = ';', row.names = F)
 
 #-- Outcome COVID-19 Hospitalization
-fit <- survfit22(Surv(outcome_hosp_time, outcome_hosp_status == 2) ~ tx_group, 
+fit <- survfit2(Surv(outcome_hosp_time, outcome_hosp_status == 2) ~ tx_group, 
                data = dfREMlong)
 
 saveRDS(fit, here('Results', 'dose_12', 'rem_main_analysis', 'survfit2_outcome_hosp.RDS'))
@@ -848,7 +856,7 @@ coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% broom.
       write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_noncovid_death_period_three.csv'), sep = ';', row.names = F)
 
 # Non-COVID-death - Pseudohazards (Cuminc)
-dfREM_death_cuminc <- dfRem_death %>% mutate(outcome_death_status = factor(outcome_death_status, levels = 0:2,
+dfREM_death_cuminc <- dfREM_death %>% mutate(outcome_death_status = factor(outcome_death_status, levels = 0:2,
                                                                            labels = c('censor', 'noncovid_death', 'covid_death')))
 
 cuminc_fit <- cuminc(Surv(outcome_death_time, outcome_death_status) ~ tx_group, 
@@ -856,11 +864,11 @@ cuminc_fit <- cuminc(Surv(outcome_death_time, outcome_death_status) ~ tx_group,
 
 saveRDS(cuminc_fit, here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_death.RDS'))
 
-crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfRem_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
       broom::tidy() %>% 
       write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_noncovid_death_three_periods.csv'), sep = ';', row.names = F)
 
-crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfRem_death_cuminc, id = new_id, failcode = 'covid_death') %>%
+crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'covid_death') %>%
       broom::tidy() %>% 
       write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_covid_death_three_periods.csv'), sep = ';', row.names = F)
 

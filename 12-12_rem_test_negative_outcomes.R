@@ -24,37 +24,62 @@ ifelse(!dir.exists(here('Results', 'dose_12', 'negative outcomes')), dir.create(
 
 # Importing List of Concept IDS for Negative Outcomes
 # We will need to iterate through this table
-df_negative_outcomes <- read.table(here('NCO.csv'), sep = ',', header=T)
+df_negative_outcomes <- read.csv(here('NCO.csv'), sep = ';', header=T)
 
 
 for (negative_outcome_id in df_negative_outcomes$ConceptId) {
-  
-
-# Creating a Temporary Dataset to Add Temporary Outcome 
-cancerNO <- cancerCohort %>% 
-      select(subject_id) %>%
-      left_join(cdm$condition_occurrence %>% 
-                      filter(person_id %in% cancerIDS) %>%
-                      filter(condition_concept_id == negative_outcome_id) %>%
-                      select(person_id, condition_start_date, condition_concept_id) %>%
-                      collect(),
-                by = c('subject_id' = 'person_id')) %>%
-      filter(coalesce(condition_start_date >= as.Date.character('27/12/2020', format = '%d/%m/%Y'), TRUE)) %>%
-      arrange(subject_id, condition_start_date) %>%
-      mutate(outcome_number = unlist(mapply(
-            function(len, val) if (val == 0) rep(0, len) else 1:len,
-            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
-
-cancerNOWide <- cancerNO %>%
-      pivot_wider(id_cols = subject_id, names_from = c('outcome_number'), 
-                  values_from = c('condition_start_date'),
-                  names_glue = "{.value}_{outcome_number}") %>%
-      select(-ends_with('_NA'))
-
-
-cancerNOWide <- cancerCohort %>% select(subject_id) %>% left_join(cancerNOWide)
-
-
+      type_var <- df_negative_outcomes$Type[df_negative_outcomes$ConceptId == negative_outcome_id]
+      
+      # Creating a Temporary Dataset to Add Temporary Outcome 
+      if(type_var == 'condition_ocurrence'){
+            cancerNO <- cancerCohort %>% 
+                  select(subject_id) %>%
+                  left_join(cdm$condition_occurrence %>% 
+                                  filter(person_id %in% cancerIDS) %>%
+                                  filter(condition_concept_id == negative_outcome_id) %>%
+                                  select(person_id, condition_start_date, condition_concept_id) %>%
+                                  collect(),
+                            by = c('subject_id' = 'person_id')) %>%
+                  filter(coalesce(condition_start_date >= as.Date.character('27/12/2020', format = '%d/%m/%Y'), TRUE)) %>%
+                  arrange(subject_id, condition_start_date) %>%
+                  mutate(outcome_number = unlist(mapply(
+                        function(len, val) if (val == 0) rep(0, len) else 1:len,
+                        rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+            
+            cancerNOWide <- cancerNO %>%
+                  pivot_wider(id_cols = subject_id, names_from = c('outcome_number'), 
+                              values_from = c('condition_start_date'),
+                              names_glue = "{.value}_{outcome_number}") %>%
+                  select(-ends_with('_NA'))
+            
+            cancerNOWide <- cancerCohort %>% select(subject_id) %>% left_join(cancerNOWide)
+            
+      }else if(type_var == 'drug_exposure'){
+            cancerNO <- cancerCohort %>% 
+                  select(subject_id) %>%
+                  left_join(cdm$drug_exposure %>% 
+                                  filter(person_id %in% cancerIDS) %>%
+                                  filter(drug_concept_id == negative_outcome_id) %>%
+                                  select(person_id, drug_exposure_start_date, drug_concept_id) %>%
+                                  collect(),
+                            by = c('subject_id' = 'person_id')) %>%
+                  filter(coalesce(drug_exposure_start_date >= as.Date.character('27/12/2020', format = '%d/%m/%Y'), TRUE)) %>%
+                  arrange(subject_id, drug_exposure_start_date) %>%
+                  mutate(outcome_number = unlist(mapply(
+                        function(len, val) if (val == 0) rep(0, len) else 1:len,
+                        rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+            
+            cancerNOWide <- cancerNO %>%
+              rename("condition_start_date" = "drug_exposure_start_date") %>%
+              rename("condition_concept_id" = "drug_concept_id") %>%
+                  pivot_wider(id_cols = subject_id, names_from = c('outcome_number'), 
+                              values_from = c('condition_start_date'),
+                              names_glue = "{.value}_{outcome_number}") %>%
+                  select(-ends_with('_NA'))
+            
+            cancerNOWide <- cancerCohort %>% select(subject_id) %>% left_join(cancerNOWide)
+      }
+      
 ## Merge batched data into the one dataframe
 # Make into dataframe
 dfREM <- do.call(bind_rows, z_merge_1st2nd)

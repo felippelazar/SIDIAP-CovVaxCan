@@ -1,44 +1,55 @@
-ConceptId,OutcomeName
-75860,Constipation
-197304,Ulcer of lower extremity
-42709838,Cellulitis of lower limb
-436659,Iron deficiency anemia
-4155902,Wax in ear canal
-138825,Actinic keratosis
-375545,Cataract
-377889,Hearing loss
-140673,Hypothyroidism
-4026112,Rectal hemorrhage
-4169905,Foot pain
-197672,Urinary incontinence
-4317977,Bilateral cataracts
-436070,Vitamin D deficiency
-4112752,Basal cell carcinoma of skin
-195562,Hemorrhoids
-141932,Senile hyperkeratosis
-4217260,Intraocular pressure left eye
-4038030,Hearing difficulty
-437541,Glaucoma
-380731,Otitis externa
-4195039,Osteopenia
-4036620,Dry eyes
-198803,Benign prostatic hyperplasia
-378425,Blepharitis
-74719,Ulcer of foot
-4111921,Squamous cell carcinoma of skin
-138384,Acquired hypothyroidism
-374028,Age related macular degeneration
-44783954,Acid reflux
-4155040,Laceration of lower leg
-4288544,Inguinal hernia
-46287159,Traumatic wound
-196456,Gallstone
-135333,Pressure ulcer
-4285898,Polyp of colon
-374375,Impacted cerumen
-443419,Laceration - injury
-4053604,Open wound of lower leg
-4060207,Vulval irritation
-376707,Acute conjunctivitis
-4058568,Vaginal irritation
-4016155,Prostatism
+ConceptId;OutcomeName;Type
+75860;Constipation;condition_ocurrence
+197304;Ulcer of lower extremity;condition_ocurrence
+42709838;Cellulitis of lower limb;condition_ocurrence
+436659;Iron deficiency anemia;condition_ocurrence
+4155902;Wax in ear canal;condition_ocurrence
+138825;Actinic keratosis;condition_ocurrence
+375545;Cataract;condition_ocurrence
+377889;Hearing loss;condition_ocurrence
+140673;Hypothyroidism;condition_ocurrence
+4026112;Rectal hemorrhage;condition_ocurrence
+4169905;Foot pain;condition_ocurrence
+197672;Urinary incontinence;condition_ocurrence
+4317977;Bilateral cataracts;condition_ocurrence
+436070;Vitamin D deficiency;condition_ocurrence
+4112752;Basal cell carcinoma of skin;condition_ocurrence
+195562;Hemorrhoids;condition_ocurrence
+141932;Senile hyperkeratosis;condition_ocurrence
+4217260;Intraocular pressure left eye;condition_ocurrence
+4038030;Hearing difficulty;condition_ocurrence
+437541;Glaucoma;condition_ocurrence
+380731;Otitis externa;condition_ocurrence
+4195039;Osteopenia;condition_ocurrence
+4036620;Dry eyes;condition_ocurrence
+198803;Benign prostatic hyperplasia;condition_ocurrence
+378425;Blepharitis;condition_ocurrence
+74719;Ulcer of foot;condition_ocurrence
+4111921;Squamous cell carcinoma of skin;condition_ocurrence
+138384;Acquired hypothyroidism;condition_ocurrence
+374028;Age related macular degeneration;condition_ocurrence
+44783954;Acid reflux;condition_ocurrence
+4155040;Laceration of lower leg;condition_ocurrence
+4288544;Inguinal hernia;condition_ocurrence
+46287159;Traumatic wound;condition_ocurrence
+196456;Gallstone;condition_ocurrence
+135333;Pressure ulcer;condition_ocurrence
+4285898;Polyp of colon;condition_ocurrence
+374375;Impacted cerumen;condition_ocurrence
+443419;Laceration - injury;condition_ocurrence
+4053604;Open wound of lower leg;condition_ocurrence
+4060207;Vulval irritation;condition_ocurrence
+376707;Acute conjunctivitis;condition_ocurrence
+4058568;Vaginal irritation;condition_ocurrence
+4016155;Prostatism;condition_ocurrence
+194133;Low back pain;condition_ocurrence
+4149320;Mild depression;condition_ocurrence
+4099313;Urinalysis;condition_ocurrence
+4324693;Mammography;condition_ocurrence
+4038048;Throat irritation;condition_ocurrence
+77670;Chest pain;condition_ocurrence
+196168;Irregular periods;condition_ocurrence
+318736;Migraine;condition_ocurrence
+1125315;acetaminophen;drug_exposure
+1177480;ibuprofen;drug_exposure
+1713332;amoxicilline;drug_exposure
