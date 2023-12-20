@@ -2,7 +2,8 @@ library(tidyverse)
 library(openxlsx)
 library(here)
 library(readxl)
-
+library(ggsurvfit)
+library(tidycmprsk)
 # Setting WD
 # setwd('/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/')
 source('utils.R')
@@ -122,10 +123,12 @@ var_names_recode <- list(
       'visits_outpatient_cat' = 'Number of Outpatient Visits (category)',
       'outcome_covid_status' = 'Infection',
       'outcome_hosp_status' = 'Hospitalizations',
+      'outcome_death_status' = 'Deaths',
       'outcome_hosp_severe_status' = 'Severe Hospitalizations',
       'outcome_hosp_death_status' = 'Hospitalizations or Death (Combined)',
       'outcome_covid_time' = 'Fup Time COVID-19 Infection (Median, IQR)',
       'outcome_hosp_time' = 'Fup Time COVID-19 Hosp. (Median, IQR)',
+      'outcome_death_time' = 'Fup Time COVID-19 Death. (Median, IQR)',
       'outcome_hosp_severe_time' = 'Fup Time COVID-19 Severe Hosp. (Median, IQR)',
       'outcome_hosp_death_time' = 'Fup Time COVID-19 Hosp. or Death (Median, IQR)',
       'tx_group' = 'Treatment Group',
@@ -157,10 +160,10 @@ tidy_add_descriptive <- function(file_path, workbook){
       analysis <- files_descriptive[[names(files_descriptive)[file_logical]]]
       
       if(analysis == 'matched vs unmatched'){
-            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names))
+            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names, var_names_recode))
             colnames(temp_table) <- c('variable', 'unmatched', 'matched', 'p-test', 'test')
       }else if(analysis == 'eligibles'){
-            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names))
+            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names, var_names_recode))
             colnames(temp_table) <- c('variable', 'elegibles')
       }else if(analysis == 'eligibles desc'){
             temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% 
@@ -173,10 +176,10 @@ tidy_add_descriptive <- function(file_path, workbook){
                   mutate(row.names = map_chr(row.names, adjust_names))
             colnames(temp_table) <- c('variable', 'un-vax', 'vaccinated', 'p-test', 'test')
       }else if(analysis == 'treat groups outcomes'){
-            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names))
+            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names, var_names_recode))
             colnames(temp_table) <- c('variable', 'un-vax', 'vaccinated', 'p-test', 'test')
       }else if(analysis == 'treat groups baseline'){
-            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names))
+            temp_table <- read.csv2(file_path, row.names=NULL, header = T) %>% mutate(row.names = map_chr(row.names, adjust_names, var_names_recode))
             colnames(temp_table) <- c('variable', 'un-vax', 'vaccinated', 'p-test', 'test')
       }
       
@@ -218,10 +221,13 @@ files_main_results <- list(
       'outcome_covid_period_three.csv' = 'infection - three periods',
       'outcome_hosp_period_all.csv' = 'hospitalization - all-periods',
       'outcome_hosp_period_three.csv' = 'hospitalization - three periods',
+      'outcome_hosp_severe_period_three.csv' = 'severe hospitalization - three periods',
+      'outcome_hosp_severe_period_all.csv' = 'severe hospitalization - all-periods',
       'outcome_death_period_all.csv' = 'death - all-periods',
       'outcome_death_period_three.csv' = 'death - three periods',
       'outcome_hosp_death_period_all.csv' = 'combined hosp death - all-periods',
-      'outcome_hosp_death_period_three.csv' = 'combined hosp death - three periods')
+      'outcome_hosp_death_period_three.csv' = 'combined hosp death - three periods',
+      'outcome_noncovid_death_period_three.csv' = 'noncovid death - three periods')
 
 # Creating Regex for Loading File Paths
 string_regex_results = paste0('(', paste(names(files_main_results), collapse = '|'), ')')
@@ -244,7 +250,9 @@ tidy_add_main_results <- function(files_path, workbook){
                                          -(1-(1/conf.low))*100, (1-conf.low)*100),
                    conf.high_ve= if_else(conf.high>1, 
                                          -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
-            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve))
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve)) %>%
+            select(outcome, periods, term, reference_row, n_obs, n_event, exposure, 
+                   p.value, est.conf.interval, est_ve.conf.interval)
             
       
       # Getting Dimensions
@@ -278,10 +286,66 @@ tidy_add_main_results <- function(files_path, workbook){
       return(workbook)
 }
 
+#----- Tidying Competitite Risk Analysis
+files_cuminc_analysis <- list(
+      'cuminc_outcome_covid_death_three_periods.csv' = 'covid death - death - three-periods',
+      'cuminc_outcome_noncovid_death_three_periods.csv' = 'non covid death - death - three-periods'
+      )
+
+# Creating Regex for Loading File Paths
+string_regex_cuminc_analysis = paste0('(', paste(names(files_cuminc_analysis), collapse = '|'), ')')
+
+tidy_add_cuminc_analysis <- function(files_path, workbook){
+      
+      # Getting Files Results
+      temp_tables <- lapply(files_path, function(x) read.csv(x, row.names=NULL, header = T, sep = ';') %>% 
+                                  mutate(analysis = files_cuminc_analysis[[str_extract(x, '([^/]*)$')]], .before=term))
+      
+      # Binding Tables
+      temp_table <- do.call(bind_rows, temp_tables)
+      temp_table <- temp_table %>%
+            separate(analysis, into = c('outcome status', 'outcome', 'periods'), sep = '-') %>%
+            mutate(term = str_replace(term, 'period', '')) %>%
+            mutate(est.hr = exp(estimate), 
+                   conf.low = exp(estimate - 1.96*std.error),
+                   conf.high = exp(estimate + 1.96*std.error)) %>%
+            mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', est.hr, conf.low, conf.high))
+      
+      # Getting Dimensions
+      n_row = dim(temp_table)[1]
+      n_col = dim(temp_table)[2]
+      
+      # Creating Worksheet
+      sheet_name = 'competing-risks'
+      addWorksheet(workbook, sheet_name)
+      
+      # Getting Table Dimension
+      max_row = dim(temp_table)[1]+1
+      max_col = dim(temp_table)[2]
+      
+      # Getting Odds and Even Rows (except title)
+      rows_odd <- seq(2, max_row)[seq(2, max_row) %% 2 == 1]
+      rows_even <- seq(2, max_row)[seq(2, max_row) %% 2 == 0]
+      
+      # Adding Worksheet
+      writeData(workbook, sheet = sheet_name, x = temp_table, headerStyle = header_gray_bordered)
+      
+      # Adding Rows and Columns Styles
+      addStyle(workbook, sheet_name, style = whitebg_bordered, rows = rows_even, cols = 1:n_col, gridExpand = T)
+      addStyle(workbook, sheet_name, style = lightgraybg_bordered, rows = rows_odd, cols = 1:n_col, gridExpand = T)
+      
+      # Setting ColWidths and RowHeights
+      setColWidths(workbook, sheet_name, cols = 1:3, widths = 25)
+      setColWidths(workbook, sheet_name, cols = 4:n_col, widths = 18)
+      setRowHeights(workbook, sheet_name, rows = 2:max_row, heights = 24)
+      
+      return(workbook)
+}
+
 #----- Tidying Sub-group Analysis
 files_subgroup_results <- list(
-      'subgroup_outcome_covid_three_periods.csv' = 'infection',
-      'subgroup_outcome_hosp_three_periods.csv' = 'hospitalization',
+      # 'subgroup_outcome_covid_three_periods.csv' = 'infection',
+      # 'subgroup_outcome_hosp_three_periods.csv' = 'hospitalization',
       'subgroup_outcome_hosp_death_three_periods.csv' = 'combined hosp death')
 
 # Creating Regex for Loading File Paths
@@ -294,8 +358,8 @@ tidy_add_raw_subgroup <- function(files_path, workbook){
                                   mutate(analysis = files_subgroup_results[[str_extract(x, '([^/]*)$')]]))
       # Binding Tables
       temp_table <- do.call(rbind, temp_tables)
-      temp_table <- temp_table %>% select(analysis, model_interaction_var, term, contrast) %>%
-            cbind(temp_table %>% select(-model_interaction_var, -term, -contrast, -analysis) %>%
+      temp_table <- temp_table %>% select(analysis, model_interaction_var, term, contrast, trt, ctrl) %>%
+            cbind(temp_table %>% select(-model_interaction_var, -term, -contrast, -analysis, -trt, -ctrl) %>%
                         mutate_all(as.numeric))
       
       # Getting Table Dimension
@@ -332,13 +396,15 @@ tidy_add_tidy_subgroup <- function(files_path, workbook){
                                   mutate(analysis = files_subgroup_results[[str_extract(x, '([^/]*)$')]]))
       # Binding Tables
       temp_table <- do.call(rbind, temp_tables)
-      temp_table <- temp_table %>% select(analysis, model_interaction_var, term, contrast) %>%
-            cbind(temp_table %>% select(-model_interaction_var, -term, -contrast, -analysis) %>%
+      temp_table <- temp_table %>% select(analysis, model_interaction_var, term, contrast, trt, ctrl) %>%
+            cbind(temp_table %>% select(-model_interaction_var, -term, -contrast, -analysis, -trt, -ctrl) %>%
                         mutate_all(as.numeric))
       
       # Tidying Table
       temp_table <- temp_table %>%
-            select(analysis, model_interaction_var, term, contrast,
+            select(analysis, model_interaction_var, term, contrast, 
+                   trt, trt.n_obs, trt.n_events,
+                   ctrl, crtl.n_obs, crtl.n_events,
                    estimate, asymp.LCL, asymp.UCL, model_p_value) %>%
             mutate(estimate = exp(estimate),
                    asymp.UCL = exp(asymp.UCL),
@@ -352,7 +418,16 @@ tidy_add_tidy_subgroup <- function(files_path, workbook){
                                          -(1-(1/asymp.LCL.HR))*100, (1-asymp.LCL.HR)*100),
                    conf.high_ve= if_else(asymp.UCL.HR > 1, 
                                          -(1-(1/asymp.UCL.HR))*100, (1-asymp.UCL.HR)*100)) %>%
-            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve))
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve)) %>%
+            mutate(est_hr.conf.interval = sprintf('%.1f (%.1f - %.1f)', estimate.HR, asymp.UCL.HR, asymp.LCL.HR)) %>%
+            mutate(trt.n_fraction = sprintf('%.0f / %.0f', trt.n_events, trt.n_obs),
+                   crtl.n_fraction = sprintf('%.0f / %.0f', crtl.n_events, crtl.n_obs)) %>%
+            select(analysis, model_interaction_var, term, contrast, 
+                   trt, trt.n_fraction,
+                   ctrl, crtl.n_fraction,
+                   est_hr.conf.interval,
+                   est_ve.conf.interval, 
+                   model_p_value)
       
       # Adding Worksheet
       sheet_name = 'sub-group tidy results'
@@ -388,6 +463,7 @@ all_analysis <- list(
       'Results/dose_12/sub_group_cancer_strict',
       'Results/dose_12/sub_group_covid_lab',
       'Results/dose_12/sub_group_hosp_3_days',
+      'Results/dose_12/sub_group_hosp_14_and_3_days',
       'Results/dose_12/sub_group_tested_patients',
       'Results/dose_12/sub_group_not_jansen',
       'Results/dose_3/rem_main_analysis',
@@ -406,12 +482,22 @@ for(analysis in all_analysis){
       
       # Adding Main Results
       files_path_results <- list.files(analysis, pattern = string_regex_results, full.names = T)
-      workbook <- tidy_add_main_results(files_path_results, workbook)
+      if(length(files_path_results) > 0){
+            workbook <- tidy_add_main_results(files_path_results, workbook)
+      }
       
+      # Adding Competing Risks
+      files_path_cuminc_analysis <- list.files(analysis, pattern = string_regex_cuminc_analysis, full.names = T)
+      if(length(files_path_cuminc_analysis) > 0){
+            workbook <- tidy_add_cuminc_analysis(files_path_cuminc_analysis, workbook)
+      }
+
       # Adding Sub-Group Analysis
       files_path_subgroup <- list.files(analysis, pattern = string_regex_subgroup, full.names = T)
-      workbook <- tidy_add_raw_subgroup(files_path_subgroup, workbook)
-      workbook <- tidy_add_tidy_subgroup(files_path_subgroup, workbook)
+      if(length(files_path_subgroup) > 0){
+            workbook <- tidy_add_raw_subgroup(files_path_subgroup, workbook)
+            workbook <- tidy_add_tidy_subgroup(files_path_subgroup, workbook)
+      }
       
       # Saving File
       filename <- str_replace(analysis, 'Results/', '')
@@ -1166,7 +1252,6 @@ dev.off()
 # fp_insert_row('Hemathological', position = 25, is.summary = T) %>%
 # fp_insert_row('Skin', position = 28, is.summary = T)
 
-
 # fp_insert_row('Breast', position = 1, is.summary = T) %>%
 # fp_insert_row('Prostate', position = 4, is.summary = T) %>%
 # fp_insert_row('Colorectal', position = 7, is.summary = T) %>%
@@ -1213,3 +1298,22 @@ all_analysis <- list(
       'Results/dose_3/sub_group_covid_lab',
       'Results/dose_3/sub_group_hosp_3_days',
       'Results/dose_3/sub_group_tested_patients')
+
+# # Cuminc Curve
+# cuminc_death <- readRDS('Results/dose_12/rem_main_analysis/cuminc_outcome_death.RDS')
+# ggsurvfit_death <- readRDS('Results/dose_12/rem_main_analysis/survfit2_outcome_death.RDS')
+# 
+# dfREMlong <- cuminc_death$data
+# cuminc_death %>%
+#       ggcuminc(outcome = c('covid_death', 'noncovid_death'))
+# 
+# survfit(Surv(outcome_hosp_death_time, outcome_hosp_death_status == 2) ~ tx_group, data = dfREMlong) %>%
+#       ggsurvfit()
+# 
+# 
+# dfREMlong <- dfREMlong %>%
+#       mutate(outcome_hosp_death_status = factor(outcome_hosp_death_status, 
+#                                                 levels = 0:2, labels = c('censor', 'non-covid death', 'hosp_death')))
+# 
+# cuminc(Surv(outcome_hosp_death_time, as.factor(outcome_hosp_death_status)) ~ tx_group,
+#        data = dfREMlong, id = new_id) %>% ggcuminc(outcome = c('hosp_death', 'non-covid death'))

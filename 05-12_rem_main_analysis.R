@@ -200,6 +200,7 @@ dfREM <- dfREM %>%
 dfREMVac <- dfREM %>%
   dplyr::select(starts_with('gv')) %>%
   mutate(tx_group = 1) %>%
+  mutate(subject_id_pair = paste(gv_subject_id, gc_subject_id, sep = '-')) %>%
   setNames(gsub('gv_', '', names(.)))
 
 dfREMControl <- dfREM %>%
@@ -211,6 +212,7 @@ dfREMControl <- dfREM %>%
          #gv_visits_outpatient_cat
          ) %>%
   mutate(tx_group = 0) %>%
+  mutate(subject_id_pair = paste(gv_subject_id, gc_subject_id, sep = '-')) %>%
   setNames(gsub('gc_', '', names(.))) %>%
   setNames(gsub('gv_', '', names(.)))
 
@@ -323,17 +325,18 @@ tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status)
 }
 
 
-tidyInteractionCox <- function(interaction_var, df, outcome){
+tidyInteractionCox <- function(interaction_var, df, outcome, outcome_number = 2){
       print(paste('Testing Interaction for Variable:', interaction_var))
       
-      formulaStringInt <- paste("Surv(tstart, tstop, outcome == 2) ~", paste('period', interaction_var, sep="*"))
+      
+      formulaStringInt <- paste0("Surv(tstart, tstop, outcome == ", outcome_number, ") ~ ", paste('period', interaction_var, sep="*"))
       m <- coxph(as.formula(formulaStringInt), data=df)
       
       m_aic <- AIC(m)
       m_bic <- BIC(m)
       size  <- m$n
       
-      formulaStringNull <- paste("Surv(tstart, tstop, outcome == 2) ~", paste('period', interaction_var, sep="+"))
+      formulaStringNull <- paste0("Surv(tstart, tstop, outcome == ", outcome_number, ") ~ ", paste('period', interaction_var, sep="+"))
       m_null <- coxph(as.formula(formulaStringNull), data=df)
       
       p_int_lrtest <- anova(m, m_null)[['Pr(>|Chi|)']][2]
@@ -345,7 +348,7 @@ tidyInteractionCox <- function(interaction_var, df, outcome){
       m_obs <- df %>%
             mutate(ttotal = tstop - tstart) %>%
             group_by(across(c(interaction_var, 'period'))) %>%
-            summarise(n_events = sum(across('outcome') == 2), n_obs = n(), exp_time = sum(across('ttotal')))
+            summarise(n_events = sum(across('outcome') == outcome_number), n_obs = n(), exp_time = sum(across('ttotal')))
       
       tidy_contrasts <- m_contrasts %>%
             mutate(contrast2 = as.character(contrast)) %>%
@@ -607,8 +610,9 @@ ggplot(aes(x=outcome_hosp_death_time, color=as.factor(tx_group)), data=dfREMlong
 ggsave(here('Results', 'dose_12', 'rem_main_analysis', 'graph_time_outcome_hosp_death_matched_rem_12_doses.pdf'),
        dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
 
-#-- ANALYSIS
-#-- Outcome COVID-19 Infection
+## ---------------------------------- ANALYSIS --------------------------------------------##
+#  -------------------------- Outcome COVID-19 Infection   ---------------------------------#
+# Main Analysis
 fit <- survfit2(Surv(outcome_covid_time, outcome_covid_status == 2) ~ tx_group, 
                data = dfREMlong)
 
@@ -637,7 +641,7 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_covid_period_all.csv'), sep = ';', row.names = F)
 
-# Sub-group Analysis 
+
 dfREM_covid <- tmerge_three_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
 
 coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
@@ -645,6 +649,12 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_covid_period_three.csv'), sep = ';', row.names = F)
 
+coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
+      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_covid_period_three_stratified.csv'), sep = ';', row.names = F)
+
+# Sub-group Analysis 
 temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_covid, outcome = 'outcome_covid')
 subgroup.temp.results <- do.call(bind_rows, temp.results)
 subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
@@ -652,7 +662,8 @@ subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
 write.table(subgroup.temp.results,
             here('Results', 'dose_12', 'rem_main_analysis', 'subgroup_outcome_covid_three_periods.csv'), sep = ';', row.names = F)
 
-#-- Outcome COVID-19 Hospitalization
+#  -------------------------- Outcome COVID-19 Hospitalization -----------------------------#
+# Main Analysis
 fit <- survfit2(Surv(outcome_hosp_time, outcome_hosp_status == 2) ~ tx_group, 
                data = dfREMlong)
 
@@ -696,6 +707,11 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_period_three.csv'), sep = ';', row.names = F)
 
+coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
+      data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_period_three_stratified.csv'), sep = ';', row.names = F)
+
 # Subgroup Analysis
 temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_hosp, outcome = 'outcome_hosp')
 subgroup.temp.results <- do.call(bind_rows, temp.results)
@@ -704,7 +720,8 @@ subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
 write.table(subgroup.temp.results,
             here('Results', 'dose_12', 'rem_main_analysis', 'subgroup_outcome_hosp_three_periods.csv'), sep = ';', row.names = F)
 
-# Outcome Severe COVID-19 Hospitalization
+#  -------------------------- Outcome COVID-19 Severe Hospitalization -----------------------#
+# Main Analysis
 fit <- survfit2(Surv(outcome_hosp_severe_time, outcome_hosp_severe_status == 2) ~ tx_group, 
                data = dfREMlong)
 
@@ -741,7 +758,13 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_severe_period_three.csv'), sep = ';', row.names = F)
 
-#-- Outcome COVID-19 Death
+coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
+      data = dfREM_hosp_severe) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_severe_period_three_stratified.csv'), sep = ';', row.names = F)
+
+#  -------------------------- Outcome COVID-19 Death --------------------------------#
+# Main Analysis
 fit <- survfit2(Surv(outcome_death_time, outcome_death_status == 2) ~ tx_group, 
                data = dfREMlong)
 
@@ -772,12 +795,26 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>%
 
 dfREM_death <- tmerge_three_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
 
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% 
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_death_period_three.csv'), sep = ';', row.names = F)
 
+coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), data = dfREM_death) %>% 
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_death_period_three_stratified.csv'), sep = ';', row.names = F)
 
-#-- Outcome COVID-19 Hospitalization or Death
+# Subgroup Analysis
+temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_death, outcome = 'outcome_death')
+subgroup.temp.results <- do.call(bind_rows, temp.results)
+subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+
+write.table(subgroup.temp.results,
+            here('Results', 'dose_12', 'rem_main_analysis', 'subgroup_outcome_death_three_periods.csv'), sep = ';', row.names = F)
+
+#  -------------------------- Outcome COVID-19 Hospitalization Or Death -------------------#
+# Main Analysis
 fit <- survfit2(Surv(outcome_hosp_death_time, outcome_hosp_death_status == 2) ~ tx_group, 
                data = dfREMlong)
 
@@ -829,6 +866,12 @@ coxph(Surv(tstart, tstop, outcome == 2) ~ period,
   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
   write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
 
+coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
+      data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
+
+
 # Subgroup Analysis
 temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_hosp_death, outcome = 'outcome_hosp_death')
 subgroup.temp.results <- do.call(bind_rows, temp.results)
@@ -837,8 +880,9 @@ subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
 write.table(subgroup.temp.results,
             here('Results', 'dose_12', 'rem_main_analysis', 'subgroup_outcome_hosp_death_three_periods.csv'), sep = ';', row.names = F)
 
-# Additional Analysis 
-# Non-COVID-death - Cause-specific Analysis
+## ------------------------Additional ANALYSIS --------------------------------------------------##
+#  --------------------Non-COVID-death - Cause-specific Analysis ---------------------------------#
+# Main Analysis
 fit <- survfit2(Surv(outcome_death_time, outcome_death_status == 1) ~ tx_group, 
                 data = dfREMlong)
 
@@ -852,10 +896,62 @@ pdf(here('Results', 'dose_12', 'rem_main_analysis', 'graph_curve_noncovid_death_
 print(temp.cumhaz, newpage = FALSE)
 dev.off()
 
-coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_noncovid_death_period_three.csv'), sep = ';', row.names = F)
+dfREM_death <- tmerge_all_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
 
-# Non-COVID-death - Pseudohazards (Cuminc)
+coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% 
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_noncovid_death_period_all.csv'), sep = ';', row.names = F)
+
+dfREM_death <- tmerge_three_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
+
+coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% 
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_noncovid_death_period_three.csv'), sep = ';', row.names = F)
+
+coxph(Surv(tstart, tstop, outcome == 1) ~ period + strata(subject_id_pair), data = dfREM_death) %>% 
+  broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+  broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'outcome_noncovid_death_period_three_stratified.csv'), sep = ';', row.names = F)
+
+# Subgroup Analysis
+temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_death, outcome = 'outcome_death', outcome_number = 1)
+subgroup.temp.results <- do.call(bind_rows, temp.results)
+subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+
+write.table(subgroup.temp.results,
+            here('Results', 'dose_12', 'rem_main_analysis', 'subgroup_outcome_noncovid_death_three_periods.csv'), sep = ';', row.names = F)
+
+# ------------ Analysis Cumulative Incidence and Pseudo-HR -------------#
+# Cumulative Incidence - Pseudohazards (Cuminc)
+# Outcome COVID Hospitalization or COVID Death vs Non-COVID Death
+dfREM_hosp_death_cuminc <- dfREM_hosp_death %>% mutate(outcome_death_status = factor(outcome_hosp_death_status, levels = 0:2,
+                                                                         labels = c('censor', 'noncovid_death', 'covid_hosp_death')))
+
+crr(Surv(outcome_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+  broom::tidy() %>% 
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_hosp_death_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
+
+crr(Surv(outcome_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'covid_hosp_death') %>%
+  broom::tidy() %>% 
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_hosp_death_three_periods_failcode_covid_hosp_death.csv'), sep = ';', row.names = F)
+
+
+# Outcome COVID Hospitalization vs Non-COVID Death
+dfREM_hosp_cuminc <- dfREM_hosp %>% mutate(outcome_hosp_status = factor(outcome_hosp_status, levels = 0:2,
+                                                                           labels = c('censor', 'noncovid_death', 'covid_hosp')))
+
+crr(Surv(outcome_hosp_time, outcome_hosp_status) ~ period, data = dfREM_hosp_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+  broom::tidy() %>% 
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_hosp_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
+
+crr(Surv(outcome_hosp_time, outcome_hosp_status) ~ period, data = dfREM_hosp_cuminc, id = new_id, failcode = 'covid_hosp') %>%
+  broom::tidy() %>% 
+  write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_hosp_three_periods_failcode_covid_hosp.csv'), sep = ';', row.names = F)
+
+
+# Outcome COVID Death vs Non-COVID Death
 dfREM_death_cuminc <- dfREM_death %>% mutate(outcome_death_status = factor(outcome_death_status, levels = 0:2,
                                                                            labels = c('censor', 'noncovid_death', 'covid_death')))
 
@@ -866,10 +962,10 @@ saveRDS(cuminc_fit, here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outc
 
 crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
       broom::tidy() %>% 
-      write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_noncovid_death_three_periods.csv'), sep = ';', row.names = F)
+      write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_death_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
 
 crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'covid_death') %>%
       broom::tidy() %>% 
-      write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_covid_death_three_periods.csv'), sep = ';', row.names = F)
+      write.table(here('Results', 'dose_12', 'rem_main_analysis', 'cuminc_outcome_death_three_periods_failcode_covid_death.csv'), sep = ';', row.names = F)
 
 

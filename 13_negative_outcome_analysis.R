@@ -8,10 +8,12 @@ library(here)
 library(glue)
 library(tidyverse)
 library(openxlsx)
+library(grid)
+library(gridExtra)
 
 # Setting Temporary WD
-resultsWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/Results/'
-resultsTidyWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/Results Tidy/'
+# resultsWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/Results/'
+# resultsTidyWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/Results Tidy/'
 
 # Loading Table of Negative Outcome Results
 getNegativeOutcomesResults <- function(concept_id, file_location){
@@ -25,11 +27,11 @@ getNegativeOutcomesResults <- function(concept_id, file_location){
 
 NCO <- read.csv(file=here("NCO.csv"), sep = ";") # File with the conditions chosen to assess residual confounding
 
-negOutcomes12 <- lapply(NCO$ConceptId, getNegativeOutcomesResults, glue(resultsWD, 'dose_12/negative outcomes/'))
+negOutcomes12 <- lapply(NCO$ConceptId, getNegativeOutcomesResults, glue('Results/', 'dose_12/negative outcomes/'))
 negOutcomes12 <- do.call(bind_rows, negOutcomes12)
 negOutcomes12 <- negOutcomes12 %>% left_join(NCO)
 
-negOutcomes3 <- lapply(NCO$ConceptId, getNegativeOutcomesResults, glue(resultsWD, 'dose_3/negative outcomes/'))
+negOutcomes3 <- lapply(NCO$ConceptId, getNegativeOutcomesResults, glue('Results/', 'dose_3/negative outcomes/'))
 negOutcomes3 <- do.call(bind_rows, negOutcomes3)
 negOutcomes3 <- negOutcomes3 %>% left_join(NCO) 
 
@@ -45,7 +47,7 @@ ggplot(bind_rows(negOutcomes12, negOutcomes3) %>% drop_na(),
             legend.position = "bottom", strip.background =element_rect(fill="lightgrey")) +
       labs(x = 'Hazard Ratio', y = 'Outcomes', size = 'Number of Events')
 
-ggsave('Figures/NegOutcomesPlot_Figure.png', height = 150, width = 250, units = "mm", dpi = "print")
+ggsave('Figures/NegOutcomesPlot_Figure_19122023.png', height = 150, width = 250, units = "mm", dpi = "print")
 
 # Plotting Calibration
 negOutcomes12_toPlot <- negOutcomes12 %>% filter(term == 'periodV1 14D+') %>%
@@ -77,7 +79,7 @@ tt <- egg::ggarrange(v1_14, v2_7, v3_14, v3_60, ncol = 2,
                      labels = c('A', 'B', 'C', 'D'),
                      label.args = list(gp=gpar(fontface='bold', fontsize=30), x=unit(2,"line"), hjust=-0.5, vjust=1.5))
 
-ggsave("Figures/NegOutcomes_CalibrationPlot.png", plot = tt, height = 260, width = 260, units = "mm", dpi = "print")
+ggsave("Figures/NegOutcomes_CalibrationPlot_19122023.png", plot = tt, height = 260, width = 260, units = "mm", dpi = "print")
 
 # Loading Main Outcome Results
 getCalibratedResults <- function(neg_outcomes_dataframe, main_results_dataframe, term_to_filter){
@@ -101,10 +103,10 @@ getCalibratedResults <- function(neg_outcomes_dataframe, main_results_dataframe,
       return(result_full)
 }
 
-outcomeHR12 <- read.table(glue(resultsWD, 'dose_12/rem_main_analysis/outcome_hosp_death_period_three.csv'),  sep=';', header = T) %>%
+outcomeHR12 <- read.table(glue('Results/',  'dose_12/rem_main_analysis/outcome_hosp_death_period_three.csv'),  sep=';', header = T) %>%
       mutate(OutcomeName = 'COVID-19 Hosp. or Death')
 
-outcomeHR3 <- read.table(glue(resultsWD, 'dose_3/rem_main_analysis/outcome_hosp_death_period_three.csv'),  sep=';', header = T) %>%
+outcomeHR3 <- read.table(glue('Results/',  'dose_3/rem_main_analysis/outcome_hosp_death_period_three.csv'),  sep=';', header = T) %>%
       mutate(OutcomeName = 'COVID-19 Hosp. or Death')
 
 tidy_results <- bind_rows(getCalibratedResults(negOutcomes12, outcomeHR12, 'periodV1 14D+'),
@@ -115,10 +117,16 @@ tidy_results <- bind_rows(getCalibratedResults(negOutcomes12, outcomeHR12, 'peri
              conf.high_ve = if_else(conf.low>1, -(1-(1/conf.low))*100, (1-conf.low)*100),
              conf.low_ve= if_else(conf.high>1, -(1-(1/conf.high))*100, (1-conf.high)*100))
 
+bind_rows(negOutcomes12 %>% mutate(data = '1-2 dose'), negOutcomes3 %>% mutate(data = '3 dose'))
+
 # Exporting To Excel
 wb <- createWorkbook()
-addWorksheet(wb, "negative_outcomes")
+addWorksheet(wb, "calibrated_results")
 writeData(wb, sheet = 1, x = tidy_results)
-saveWorkbook(wb, glue(resultsTidyWD, 'neg_outcomes_tidy.xlsx'), overwrite = TRUE)
+addWorksheet(wb, "negative_outcomes_1-2nd")
+writeData(wb, sheet = 2, x = negOutcomes12 %>% mutate(data = '1-2 dose'))
+addWorksheet(wb, "negative_outcomes_3rd")
+writeData(wb, sheet = 3, x = negOutcomes3 %>% mutate(data = '3 dose'))
+saveWorkbook(wb, glue('Results Tidy/',  'neg_outcomes_tidy.xlsx'), overwrite = TRUE)
 
              
