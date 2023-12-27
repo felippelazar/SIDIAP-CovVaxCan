@@ -14,6 +14,8 @@ source('utils.R')
 library(broom.helpers)
 library(tidycmprsk)
 library(ggsurvfit)
+library(emmeans)
+library(tableone)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
@@ -776,3 +778,4 @@ crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_
 crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'covid_death') %>%
       broom::tidy() %>% 
       write.table(here('Results', 'dose_3', 'sub_group_hosp_14_and_3_days', 'cuminc_outcome_covid_death_three_periods.csv'), sep = ';', row.names = F)
+

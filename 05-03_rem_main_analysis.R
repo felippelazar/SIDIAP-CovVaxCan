@@ -15,6 +15,7 @@ library(broom.helpers)
 library(emmeans)
 library(tidycmprsk)
 library(ggsurvfit)
+library(tableone)
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
@@ -191,20 +192,21 @@ dfREM <- dfREM %>%
 
 # Creating a long dataset for further analysis
 dfREMVac <- dfREM %>%
-  select(starts_with('gv')) %>%
+  mutate(gv_subject_id_pair = paste(gv_subject_id, gc_subject_id, sep = '-')) %>%
+  dplyr::select(starts_with('gv')) %>%
   mutate(tx_group = 1) %>%
-  mutate(subject_id_pair = paste(gv_subject_id, gc_subject_id, sep = '-')) %>%
   setNames(gsub('gv_', '', names(.)))
 
-
 dfREMControl <- dfREM %>%
-  select(starts_with('gc'), 
-         gv_gender_concept_id, 
-         gv_aga_code, 
-         gv_cancer_diagnosis_time, 
-         gv_vac_scheme) %>%
+  mutate(gc_subject_id_pair = paste(gv_subject_id, gc_subject_id, sep = '-')) %>%
+  dplyr::select(starts_with('gc'), 
+                gv_gender_concept_id, 
+                gv_aga_code, 
+                gv_cancer_diagnosis_time, 
+                #gv_CCI_Metastatic_Solid_Tumor,
+                #gv_visits_outpatient_cat
+  ) %>%
   mutate(tx_group = 0) %>%
-  mutate(subject_id_pair = paste(gv_subject_id, gc_subject_id, sep = '-')) %>%
   setNames(gsub('gc_', '', names(.))) %>%
   setNames(gsub('gv_', '', names(.)))
 
@@ -898,14 +900,14 @@ write.table(subgroup.temp.results,
 # ------------ Analysis Cumulative Incidence and Pseudo-HR -------------#
 # Cumulative Incidence - Pseudohazards (Cuminc)
 # Outcome COVID Hospitalization or COVID Death vs Non-COVID Death
-dfREM_hosp_death_cuminc <- dfREM_hosp_death %>% mutate(outcome_death_status = factor(outcome_hosp_death_status, levels = 0:2,
+dfREM_hosp_death_cuminc <- dfREM_hosp_death %>% mutate(outcome_hosp_death_status = factor(outcome_hosp_death_status, levels = 0:2,
                                                                                      labels = c('censor', 'noncovid_death', 'covid_hosp_death')))
 
-crr(Surv(outcome_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+crr(Surv(outcome_hosp_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
   broom::tidy() %>% 
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'cuminc_outcome_hosp_death_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
 
-crr(Surv(outcome_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'covid_hosp_death') %>%
+crr(Surv(outcome_hosp_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'covid_hosp_death') %>%
   broom::tidy() %>% 
   write.table(here('Results', 'dose_3', 'rem_main_analysis', 'cuminc_outcome_hosp_death_three_periods_failcode_covid_hosp_death.csv'), sep = ';', row.names = F)
 
