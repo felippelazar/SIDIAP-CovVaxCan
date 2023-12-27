@@ -217,17 +217,24 @@ tidy_add_descriptive <- function(file_path, workbook){
 
 #----- Tidying Main Results Analysis
 files_main_results <- list(
-      'outcome_covid_period_all.csv' = 'infection - all-periods',
-      'outcome_covid_period_three.csv' = 'infection - three periods',
-      'outcome_hosp_period_all.csv' = 'hospitalization - all-periods',
-      'outcome_hosp_period_three.csv' = 'hospitalization - three periods',
-      'outcome_hosp_severe_period_three.csv' = 'severe hospitalization - three periods',
-      'outcome_hosp_severe_period_all.csv' = 'severe hospitalization - all-periods',
-      'outcome_death_period_all.csv' = 'death - all-periods',
-      'outcome_death_period_three.csv' = 'death - three periods',
-      'outcome_hosp_death_period_all.csv' = 'combined hosp death - all-periods',
-      'outcome_hosp_death_period_three.csv' = 'combined hosp death - three periods',
-      'outcome_noncovid_death_period_three.csv' = 'noncovid death - three periods')
+      'outcome_covid_period_all.csv' = 'infection - all periods - no',
+      'outcome_covid_period_three.csv' = 'infection - three periods - no',
+      'outcome_covid_period_three_stratified.csv' = 'infection - three periods - yes',
+      'outcome_hosp_period_all.csv' = 'hospitalization - all periods - no',
+      'outcome_hosp_period_three.csv' = 'hospitalization - three periods - no',
+      'outcome_hosp_period_three_stratified.csv' = 'hospitalization - three periods - yes',
+      'outcome_hosp_severe_period_three.csv' = 'severe hospitalization - three periods - no',
+      'outcome_hosp_severe_period_three_stratified.csv' = 'severe hospitalization - three periods - yes',
+      'outcome_hosp_severe_period_all.csv' = 'severe hospitalization - all periods - no',
+      'outcome_death_period_all.csv' = 'death - all periods - no',
+      'outcome_death_period_three.csv' = 'death - three periods - no',
+      'outcome_death_period_three_stratified.csv' = 'death - three periods - yes',
+      'outcome_hosp_death_period_all.csv' = 'combined hosp death - all periods - no',
+      'outcome_hosp_death_period_three.csv' = 'combined hosp death - three periods - no',
+      'outcome_hosp_death_period_three_stratified.csv' = 'combined hosp death - three periods - yes',
+      'outcome_noncovid_death_period_three.csv' = 'noncovid death - three periods - no',
+      'outcome_noncovid_death_period_three_stratified.csv' = 'noncovid death - three periods - yes',
+      'outcome_noncovid_death_period_all.csv' = 'noncovid death - all periods - no')
 
 # Creating Regex for Loading File Paths
 string_regex_results = paste0('(', paste(names(files_main_results), collapse = '|'), ')')
@@ -241,7 +248,7 @@ tidy_add_main_results <- function(files_path, workbook){
       # Binding Tables
       temp_table <- do.call(bind_rows, temp_tables)
       temp_table <- temp_table %>%
-            separate(analysis, into = c('outcome', 'periods'), sep = '-') %>%
+            separate(analysis, into = c('outcome', 'periods', 'stratified'), sep = '-') %>%
             mutate(term = str_replace(term, 'period', '')) %>%
             mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', estimate, conf.low, conf.high)) %>%
             mutate(estimate_ve = if_else(estimate>1, 
@@ -251,7 +258,7 @@ tidy_add_main_results <- function(files_path, workbook){
                    conf.high_ve= if_else(conf.high>1, 
                                          -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
             mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve)) %>%
-            select(outcome, periods, term, reference_row, n_obs, n_event, exposure, 
+            select(outcome, periods, stratified, term, reference_row, n_obs, n_event, exposure, 
                    p.value, est.conf.interval, est_ve.conf.interval)
             
       
@@ -288,8 +295,12 @@ tidy_add_main_results <- function(files_path, workbook){
 
 #----- Tidying Competitite Risk Analysis
 files_cuminc_analysis <- list(
-      'cuminc_outcome_covid_death_three_periods.csv' = 'covid death - death - three-periods',
-      'cuminc_outcome_noncovid_death_three_periods.csv' = 'non covid death - death - three-periods'
+      'cuminc_outcome_hosp_death_three_periods_failcode_noncovid_death.csv' = 'hosp death - noncovid death - three-periods',
+      'cuminc_outcome_hosp_death_three_periods_failcode_covid_hosp_death.csv' = 'hosp death - covid death - three-periods',
+      'cuminc_outcome_hosp_three_periods_failcode_noncovid_death.csv' = 'hosp - noncovid death - three-periods',
+      'cuminc_outcome_hosp_three_periods_failcode_covid_hosp.csv' = 'hosp - covid hosp - three-periods',
+      'cuminc_outcome_death_three_periods_failcode_noncovid_death.csv' = 'death - noncovid death - three-periods',
+      'cuminc_outcome_death_three_periods_failcode_covid_death.csv' = 'death - covid death - three-periods'
       )
 
 # Creating Regex for Loading File Paths
@@ -304,7 +315,7 @@ tidy_add_cuminc_analysis <- function(files_path, workbook){
       # Binding Tables
       temp_table <- do.call(bind_rows, temp_tables)
       temp_table <- temp_table %>%
-            separate(analysis, into = c('outcome status', 'outcome', 'periods'), sep = '-') %>%
+            separate(analysis, into = c('outcome', 'failcode', 'periods'), sep = '-') %>%
             mutate(term = str_replace(term, 'period', '')) %>%
             mutate(est.hr = exp(estimate), 
                    conf.low = exp(estimate - 1.96*std.error),
@@ -346,7 +357,8 @@ tidy_add_cuminc_analysis <- function(files_path, workbook){
 files_subgroup_results <- list(
       # 'subgroup_outcome_covid_three_periods.csv' = 'infection',
       # 'subgroup_outcome_hosp_three_periods.csv' = 'hospitalization',
-      'subgroup_outcome_hosp_death_three_periods.csv' = 'combined hosp death')
+      'subgroup_outcome_hosp_death_three_periods.csv' = 'combined hosp death',
+      'subgroup_outcome_noncovid_death_three_periods.csv' = 'non-covid death')
 
 # Creating Regex for Loading File Paths
 string_regex_subgroup = paste0('(', paste(names(files_subgroup_results), collapse = '|'), ')')
@@ -470,6 +482,7 @@ all_analysis <- list(
       'Results/dose_3/sub_group_cancer_strict',
       'Results/dose_3/sub_group_covid_lab',
       'Results/dose_3/sub_group_hosp_3_days',
+      'Results/dose_3/sub_group_hosp_14_and_3_days',
       'Results/dose_3/sub_group_tested_patients')
 
 for(analysis in all_analysis){
