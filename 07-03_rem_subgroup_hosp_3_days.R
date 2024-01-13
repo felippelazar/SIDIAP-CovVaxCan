@@ -20,6 +20,9 @@ ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
 ifelse(!dir.exists(here('Results', 'dose_3')), dir.create(here('Results', 'dose_3')), FALSE)
 ifelse(!dir.exists(here('Results', 'dose_3', 'sub_group_hosp_3_days')), dir.create(here('Results', 'dose_3', 'sub_group_hosp_3_days')), FALSE)
 
+# Loading Auxiliary Objects for Analayis
+source('aux_objects_rem_3.R')
+
 #-- Merge batched data into the one dataframe
 dfREM <- do.call(bind_rows, z_merge_3rd)
 
@@ -260,136 +263,6 @@ dfREMlong <- bind_rows(dfREMVac, dfREMControl)
 # Creating Unique Identifiers for Cox Analysis (as matches can be duplicated eventually)
 dfREMlong <- dfREMlong %>%
   mutate(new_id = 1:nrow(.))
-
-# Creating tmerge function
-tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){
-  
-  df <- df %>%
-    mutate(p1_time = vac_exposure_time_3,
-           p2_time = vac_exposure_time_3 + 14,
-           p3_time = vac_exposure_time_3 + 28,
-           p4_time = vac_exposure_time_3 + 60,
-           p5_time = vac_exposure_time_3 + 120) %>%
-    mutate(
-      delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
-      omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
-  
-  dft <- tmerge(df, df, 
-                id=new_id, 
-                outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
-                dose_three = tdc(vac_exposure_time_3),
-                p1 = tdc(p1_time),
-                p2 = tdc(p2_time),
-                p3 = tdc(p3_time),
-                p4 = tdc(p4_time),
-                p5 = tdc(p5_time),
-                delta_voc = tdc(delta_voc_time),
-                omicron_voc = tdc(omicron_voc_time)
-  )
-  
-  dft <- dft %>%
-    mutate(period = paste(p1, p2, p3, p4, p5, sep='-')) %>%
-    mutate(period = fct_case_when(
-      period == '0-0-0-0-0' ~ 'no-vax',
-      period == '1-0-0-0-0' ~ 'V3 0-14D',
-      period == '1-1-0-0-0' ~ 'V3 14-28D',
-      period == '1-1-1-0-0' ~ 'V3 28-60D',
-      period == '1-1-1-1-0' ~ 'V3 60-120',
-      period == '1-1-1-1-1' ~ 'V3 120+'
-    )) %>% 
-    mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
-    mutate(covid_voc = fct_case_when(
-      voc == '1-0' ~ 'Delta VOC',
-      voc == '1-1' ~ 'Omicron VOC'
-    ))
-  
-  return(dft)
-}
-
-tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status){
-  
-  df <- df %>%
-    mutate(p1_time = vac_exposure_time_3 + 14,
-           p2_time = vac_exposure_time_3 + 60) %>%
-    mutate(
-      delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
-      omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
-  
-  dft <- tmerge(df, df, 
-                id=new_id, 
-                outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
-                dose_three = tdc(vac_exposure_time_3),
-                p1 = tdc(p1_time),
-                p2 = tdc(p2_time),
-                delta_voc = tdc(delta_voc_time),
-                omicron_voc = tdc(omicron_voc_time)
-  )
-  
-  dft <- dft %>%
-    mutate(period = paste(p1, p2, sep='-')) %>%
-    mutate(period = fct_case_when(
-      period == '0-0' ~ 'no-vax',
-      period == '1-0' ~ 'V3 14-60D',
-      period == '1-1' ~ 'V3 60+'
-    )) %>% 
-    mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
-    mutate(covid_voc = fct_case_when(
-      voc == '1-0' ~ 'Delta VOC',
-      voc == '1-1' ~ 'Omicron VOC'
-    ))
-  
-  return(dft)
-}
-
-
-tidyInteractionCox <- function(interaction_var, df, outcome){
-  print(paste('Testing Interaction for Variable:', interaction_var))
-  
-  formulaStringInt <- paste("Surv(tstart, tstop, outcome == 2) ~", paste('period', interaction_var, sep="*"))
-  m <- coxph(as.formula(formulaStringInt), data=df)
-  
-  m_aic <- AIC(m)
-  m_bic <- BIC(m)
-  size  <- m$n
-  
-  formulaStringNull <- paste("Surv(tstart, tstop, outcome == 2) ~", paste('period', interaction_var, sep="+"))
-  m_null <- coxph(as.formula(formulaStringNull), data=df)
-  
-  p_int_lrtest <- anova(m, m_null)[['Pr(>|Chi|)']][2]
-  
-  m_emeans <- emmeans(m, specs = c('period', interaction_var))
-  m_contrasts <- contrast(m_emeans, 'trt.vs.ctrl', by = interaction_var)
-  m_contrasts <- confint(m_contrasts, type = 'wald') %>% as.tibble() 
-  
-  m_obs <- df %>%
-    mutate(ttotal = tstop - tstart) %>%
-    group_by(across(c(interaction_var, 'period'))) %>%
-    summarise(n_events = sum(across('outcome') == 2), n_obs = n(), exp_time = sum(across('ttotal')))
-  
-  tidy_contrasts <- m_contrasts %>%
-    mutate(contrast2 = as.character(contrast)) %>%
-    separate(col = 'contrast2', into = c('trt', 'ctrl'), sep = ' - ') %>%
-    mutate(across(c('trt', 'ctrl'), ~ gsub('[()]', '', .x))) %>%
-    left_join(m_obs %>% rename("crtl.n_events" = "n_events", 
-                               "crtl.n_obs" = "n_obs", 
-                               "crtl.exp_time" = "exp_time",
-                               "ctrl" = "period"), 
-              by = c(interaction_var, 'ctrl')) %>%
-    left_join(m_obs %>% rename("trt.n_events" = "n_events", 
-                               "trt.n_obs" = "n_obs", 
-                               "trt.exp_time" = "exp_time",
-                               "trt" = "period"), 
-              by = c(interaction_var, 'trt')) %>%
-    rename('term' = all_of(interaction_var)) %>%
-    mutate(term = as.character(term)) %>%
-    mutate(model_AIC = m_aic, 
-           model_BIC = m_bic,
-           model_size = size,
-           model_p_value = p_int_lrtest,
-           model_interaction_var = interaction_var)
-  
-  return(tidy_contrasts)
-}
 
 # Creating Vector of Variables for Descriptive Analysis
 # Demographics
