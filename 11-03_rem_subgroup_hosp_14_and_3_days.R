@@ -22,11 +22,22 @@ ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
 ifelse(!dir.exists(here('Results', 'dose_3')), dir.create(here('Results', 'dose_3')), FALSE)
 ifelse(!dir.exists(here('Results', 'dose_3', 'sub_group_hosp_14_and_3_days')), dir.create(here('Results', 'dose_3', 'sub_group_hosp_14_and_3_days')), FALSE)
 
-#-- Merge batched data into the one dataframe
-dfREM <- do.call(bind_rows, z_merge_3rd)
-
 # Loading Auxiliary Objects for Analayis
 source('aux_objects_rem_3.R')
+
+# Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
+DO_DESCRIPTIVE <- TRUE
+DO_INFECTION <- TRUE
+DO_HOSP <- TRUE
+DO_SEVERE_HOSP <- TRUE
+DO_DEATH <- TRUE
+DO_HOSP_DEATH <- TRUE
+DO_NON_COVID_DEATH <- TRUE
+DO_SUBGROUP_ANALYSIS <- TRUE
+DO_COMPETING_RISK <- TRUE
+
+#-- Merge batched data into the one dataframe
+dfREM <- do.call(bind_rows, z_merge_3rd)
 
 # HERE WILL BE MANIPULATING THE DATA TO INCLUDE THE OUTCOME OF HOSPITALIZATION UNTIL DAY 3th
 dfREMVac <- dfREM %>%

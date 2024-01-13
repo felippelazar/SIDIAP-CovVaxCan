@@ -27,6 +27,17 @@ ifelse(!dir.exists(here('Results', 'dose_12', 'sub_group_hosp_3_days')), dir.cre
 # Loading Auxiliary Objects for Analayis
 source('aux_objects_rem_12.R')
 
+# Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
+DO_DESCRIPTIVE <- TRUE
+DO_INFECTION <- TRUE
+DO_HOSP <- TRUE
+DO_SEVERE_HOSP <- TRUE
+DO_DEATH <- TRUE
+DO_HOSP_DEATH <- TRUE
+DO_NON_COVID_DEATH <- TRUE
+DO_SUBGROUP_ANALYSIS <- TRUE
+DO_COMPETING_RISK <- TRUE
+
 ## Merge batched data into the one dataframe
 # Make into dataframe
 dfREM <- do.call(bind_rows, z_merge_1st2nd)
