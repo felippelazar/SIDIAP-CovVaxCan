@@ -3,6 +3,9 @@
 # Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
 # ============================================================================ #
 
+# Creating Dose Object
+dose_analysis <- 'dose_12'
+
 # Creating tmerge function
 # Creating dataset with all periods
 tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){

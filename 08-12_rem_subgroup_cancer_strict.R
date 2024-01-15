@@ -24,17 +24,18 @@ ifelse(!dir.exists(here('Results', 'dose_12', 'sub_group_cancer_strict')), dir.c
 
 # Loading Auxiliary Objects for Analayis
 source('aux_objects_rem_12.R')
+current_analysis <- 'sub_group_cancer_strict'
 
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
-DO_DESCRIPTIVE <- TRUE
-DO_INFECTION <- TRUE
-DO_HOSP <- TRUE
-DO_SEVERE_HOSP <- TRUE
+DO_DESCRIPTIVE <- FALSE
+DO_INFECTION <- FALSE
+DO_HOSP <- FALSE
+DO_SEVERE_HOSP <- FALSE
 DO_DEATH <- TRUE
 DO_HOSP_DEATH <- TRUE
 DO_NON_COVID_DEATH <- TRUE
-DO_SUBGROUP_ANALYSIS <- TRUE
-DO_COMPETING_RISK <- TRUE
+DO_SUBGROUP_ANALYSIS <- FALSE
+DO_COMPETING_RISK <- FALSE
 
 ## Merge batched data into the one dataframe
 # Make into dataframe
@@ -258,314 +259,426 @@ dfREMlong <- dfREMlong %>%
              vac_concept_id_2 %in% c('AZ-ChAdOx1') ~ 0,
            TRUE ~ 1),
          vac_scheme = paste(vac_concept_id_1, vac_concept_id_2, sep = '-')) %>%
-  ############## CREATING SUBGROUP ANALYSIS ###########################################
-    filter(subject_id %in% cancerIDS_strict)
+      # Creating Subgroup Analysis
+      filter(subject_id %in% cancerIDS_strict)
 
 
-# Creating Descriptive Table of the Matched VS Un-matched Patients
-temp.table <- CreateTableOne(data = dfREMlong,
-                             vars = c(vars_demographics,
-                                      vars_vaccine_type,
-                                      vars_cancer_time,
-                                      vars_cancer_dx,
-                                      vars_cancer_group,
-                                      'charlson_index',
-                                      vars_comorbidities,
-                                      vars_health_visits,
-                                      'visits_outpatient_cat'),
-                             factorVars = c(vars_cancer_time,
+# Creating Descriptive Analysis
+# 1. Descriptive Analysis
+if(DO_DESCRIPTIVE){
+      # Creating Descriptive Table of the Matched VS Un-matched Patients
+      temp.table <- CreateTableOne(data = dfREMlong,
+                                   vars = c(vars_demographics,
+                                            vars_vaccine_type,
+                                            vars_cancer_time,
                                             vars_cancer_dx,
                                             vars_cancer_group,
-                                            vars_covid_tests,
-                                            vars_comorbidities),
-                             strata = 'tx_group',
-                             includeNA = TRUE)
-
-print.temp <- print(temp.table,  showAllLevels = T, nonnormal = c('charlson_index', vars_covid_tests))
-write.table(print.temp, file = here('Results', 'dose_12', 'sub_group_cancer_strict', 'desc_tx_group_matched_rem_12_doses_all_levels.csv'), sep = ';')
-
-print.temp <- print(temp.table, showAllLevels = F, nonnormal = c('charlson_index', vars_covid_tests))
-write.table(print.temp, file = here('Results', 'dose_12', 'sub_group_cancer_strict', 'desc_tx_group_matched_rem_12_doses_clean.csv'), sep = ';')
-
-print.temp <- print(temp.table, showAllLevels = F, nonnormal = c('charlson_index', vars_covid_tests), smd = T)
-write.table(print.temp, file = here('Results', 'dose_12', 'sub_group_cancer_strict', 'desc_tx_group_matched_rem_12_doses_smd.csv'), sep = ';')
-
-# Creating Graph of SMD Between Groups
-g.temp <- data.frame(var_names = rownames(ExtractSmd(temp.table)), smd = as.vector(ExtractSmd(temp.table))) 
-write.table(g.temp, file = here('Results', 'dose_12', 'sub_group_cancer_strict', 'desc_tx_group_eligible_matched_rem_12_doses_smd.csv'), sep = ';')
-
-ggsave(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_tx_group_matched_rem_12_doses_smd.pdf'),
-       make.smd.plot(g.temp, 'SMD Treatment Matched Groups'),
-       dpi=600, height = 400*0.8, width=300*0.8, units = 'mm')
-
-# Creating Table of Outcomes Percentage
-# Creating Descriptive Table of the Matched VS Un-matched Patients
-temp.table <- CreateTableOne(data = dfREMlong,
-                             vars = c(vars_outcomes_status,
-                                      vars_outcomes_time,
-                                      'tx_group'),
-                             factorVars = c(vars_outcomes_status),
-                             strata = 'tx_group',
-                             includeNA = TRUE)
-
-print.temp <- print(temp.table,  showAllLevels = T, nonnormal = vars_outcomes_time)
-write.table(print.temp, file = here('Results', 'dose_12', 'sub_group_cancer_strict', 'desc_outcomes_tx_group_matched_rem_12_doses_all_levels.csv'), sep = ';')
-
-print.temp <- print(temp.table, showAllLevels = F, nonnormal = vars_outcomes_time)
-write.table(print.temp, file = here('Results', 'dose_12', 'sub_group_cancer_strict', 'desc_outcomes_tx_group_matched_rem_12_doses_clean.csv'), sep = ';')
-
-# Doing Graphs of Censoring Time to Check
-ggplot(aes(x=outcome_covid_time, color=as.factor(tx_group)), data=dfREMlong) + geom_line(stat = 'bin') +
-  ggtitle('Follow-up Time COVID-19 Outcome') + theme_minimal() + theme(legend.position = 'top')
-
-ggsave(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_time_outcome_covid_matched_rem_12_doses.pdf'),
-       dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
-
-ggplot(aes(x=outcome_hosp_death_time, color=as.factor(tx_group)), data=dfREMlong) + geom_line(stat = 'bin') +
-  ggtitle('Follow-up Time Hosp-Death Outcome') + theme_minimal() + theme(legend.position = 'top')
-
-ggsave(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_time_outcome_hosp_death_matched_rem_12_doses.pdf'),
-       dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
-
-#-- ANALYSIS
-#-- Outcome COVID-19 Infection
-fit <- survfit2(Surv(outcome_covid_time, outcome_covid_status == 2) ~ tx_group, 
-                 data = dfREMlong)
-
-saveRDS(fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'survfit2_outcome_covid.RDS'))
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_covid_rem_12_.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_covid_rem_12_confint.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-dfREM_covid <- tmerge_all_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_covid_period_all.csv'), sep = ';', row.names = F)
-
-dfREM_covid <- tmerge_three_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_covid_period_three.csv'), sep = ';', row.names = F)
-
-#-- Outcome COVID-19 Hospitalization
-fit <- survfit2(Surv(outcome_hosp_time, outcome_hosp_status == 2) ~ tx_group, 
-                 data = dfREMlong)
-
-saveRDS(fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'survfit2_outcome_hosp.RDS'))
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_rem_12_.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_rem_12_confint.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 30),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_rem_12_subset_0_30.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-dfREM_hosp <- tmerge_all_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_hosp_period_all.csv'), sep = ';', row.names = F)
-
-dfREM_hosp <- tmerge_three_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_hosp_period_three.csv'), sep = ';', row.names = F)
-
-# Outcome Severe COVID-19 Hospitalization
-fit <- survfit2(Surv(outcome_hosp_severe_time, outcome_hosp_severe_status == 2) ~ tx_group, 
-                data = dfREMlong)
-
-saveRDS(fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'survfit2_outcome_hosp_severe.RDS'))
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_severe_rem_12_.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_severe_rem_12_confint.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-
-dfREM_hosp_severe <- tmerge_all_periods(dfREMlong, 'outcome_hosp_severe_time', 'outcome_hosp_severe_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_hosp_severe) %>% 
-      broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_hosp_severe_period_all.csv'), sep = ';', row.names = F)
-
-dfREM_hosp_severe <- tmerge_three_periods(dfREMlong, 'outcome_hosp_severe_time', 'outcome_hosp_severe_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp_severe) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_hosp_severe_period_three.csv'), sep = ';', row.names = F)
-
-#-- Outcome COVID-19 Death
-fit <- survfit2(Surv(outcome_death_time, outcome_death_status == 2) ~ tx_group, 
-                data = dfREMlong)
-
-saveRDS(fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'survfit2_outcome_death.RDS'))
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_death_rem_12_.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_death_rem_12_confint.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-dfREM_death <- tmerge_all_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% 
-      broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_death_period_all.csv'), sep = ';', row.names = F)
-
-dfREM_death <- tmerge_three_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_death_period_three.csv'), sep = ';', row.names = F)
-
-
-#-- Outcome COVID-19 Hospitalization or Death
-fit <- survfit2(Surv(outcome_hosp_death_time, outcome_hosp_death_status == 2) ~ tx_group, 
-                data = dfREMlong)
-
-saveRDS(fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'survfit2_outcome_hosp_death.RDS'))
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_death_rem_12_.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_death_rem_12_confint.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 30),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_death_rem_12_subset_0_30.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 14),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_hosp_death_rem_12_subset_0_14.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-dfREM_hosp_death <- tmerge_all_periods(dfREMlong, 'outcome_hosp_death_time', 'outcome_hosp_death_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_hosp_death) %>% 
-      broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_hosp_death_period_all.csv'), sep = ';', row.names = F)
-
-dfREM_hosp_death <- tmerge_three_periods(dfREMlong, 'outcome_hosp_death_time', 'outcome_hosp_death_status')
-
-coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
-      data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-      broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
-
-# Additional Analysis 
-# Non-COVID-death - Cause-specific Analysis
-fit <- survfit2(Surv(outcome_death_time, outcome_death_status == 1) ~ tx_group, 
-                data = dfREMlong)
-
-saveRDS(fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'survfit2_outcome_noncovid_death.RDS'))
-
-temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
-                          legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
-                          palette = c("#E7B800","#2E9FDF"), risk.table = T)
-
-pdf(here('Results', 'dose_12', 'sub_group_cancer_strict', 'graph_curve_noncovid_death_rem_12_.pdf'))
-print(temp.cumhaz, newpage = FALSE)
-dev.off()
-
-coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'outcome_noncovid_death_period_three.csv'), sep = ';', row.names = F)
-
-# Non-COVID-death - Pseudohazards (Cuminc)
-dfREM_death_cuminc <- dfREM_death %>% mutate(outcome_death_status = factor(outcome_death_status, levels = 0:2,
-                                                                           labels = c('censor', 'noncovid_death', 'covid_death')))
-
-cuminc_fit <- cuminc(Surv(outcome_death_time, outcome_death_status) ~ tx_group, 
-                     data = dfREM_death_cuminc, id = new_id)
-
-saveRDS(cuminc_fit, here('Results', 'dose_12', 'sub_group_cancer_strict', 'cuminc_outcome_death.RDS'))
-
-crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
-      broom::tidy() %>% 
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'cuminc_outcome_noncovid_death_three_periods.csv'), sep = ';', row.names = F)
-
-crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'covid_death') %>%
-      broom::tidy() %>% 
-      write.table(here('Results', 'dose_12', 'sub_group_cancer_strict', 'cuminc_outcome_covid_death_three_periods.csv'), sep = ';', row.names = F)
-
-
+                                            'charlson_index',
+                                            vars_comorbidities,
+                                            vars_health_visits,
+                                            'visits_outpatient_cat'),
+                                   factorVars = c(vars_cancer_time,
+                                                  vars_cancer_dx,
+                                                  vars_cancer_group,
+                                                  vars_covid_tests,
+                                                  vars_comorbidities),
+                                   strata = 'tx_group',
+                                   includeNA = TRUE)
+      
+      print.temp <- print(temp.table,  showAllLevels = T, nonnormal = c('charlson_index', vars_covid_tests))
+      write.table(print.temp, file = here('Results', dose_analysis, current_analysis, 'desc_tx_group_matched_rem_12_doses_all_levels.csv'), sep = ';')
+      
+      print.temp <- print(temp.table, showAllLevels = F, nonnormal = c('charlson_index', vars_covid_tests))
+      write.table(print.temp, file = here('Results', dose_analysis, current_analysis, 'desc_tx_group_matched_rem_12_doses_clean.csv'), sep = ';')
+      
+      print.temp <- print(temp.table, showAllLevels = F, nonnormal = c('charlson_index', vars_covid_tests), smd = T)
+      write.table(print.temp, file = here('Results', dose_analysis, current_analysis, 'desc_tx_group_matched_rem_12_doses_smd.csv'), sep = ';')
+      
+      # Creating Graph of SMD Between Groups
+      g.temp <- data.frame(var_names = rownames(ExtractSmd(temp.table)), smd = as.vector(ExtractSmd(temp.table))) 
+      write.table(g.temp, file = here('Results', dose_analysis, current_analysis, 'desc_tx_group_eligible_matched_rem_12_doses_smd.csv'), sep = ';')
+      
+      ggsave(here('Results', dose_analysis, current_analysis, 'graph_tx_group_matched_rem_12_doses_smd.pdf'),
+             make.smd.plot(g.temp, 'SMD Treatment Matched Groups'),
+             dpi=600, height = 400*0.8, width=300*0.8, units = 'mm')
+      
+      # Creating Table of Outcomes Percentage
+      # Creating Descriptive Table of the Matched VS Un-matched Patients
+      temp.table <- CreateTableOne(data = dfREMlong,
+                                   vars = c(vars_outcomes_status,
+                                            vars_outcomes_time,
+                                            'tx_group'),
+                                   factorVars = c(vars_outcomes_status),
+                                   strata = 'tx_group',
+                                   includeNA = TRUE)
+      
+      print.temp <- print(temp.table,  showAllLevels = T, nonnormal = vars_outcomes_time)
+      write.table(print.temp, file = here('Results', dose_analysis, current_analysis, 'desc_outcomes_tx_group_matched_rem_12_doses_all_levels.csv'), sep = ';')
+      
+      print.temp <- print(temp.table, showAllLevels = F, nonnormal = vars_outcomes_time)
+      write.table(print.temp, file = here('Results', dose_analysis, current_analysis, 'desc_outcomes_tx_group_matched_rem_12_doses_clean.csv'), sep = ';')
+      
+      # Doing Graphs of Censoring Time to Check
+      ggplot(aes(x=outcome_covid_time, color=as.factor(tx_group)), data=dfREMlong) + geom_line(stat = 'bin') +
+            ggtitle('Follow-up Time COVID-19 Outcome') + theme_minimal() + theme(legend.position = 'top')
+      
+      ggsave(here('Results', dose_analysis, current_analysis, 'graph_time_outcome_covid_matched_rem_12_doses.pdf'),
+             dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
+      
+      ggplot(aes(x=outcome_hosp_death_time, color=as.factor(tx_group)), data=dfREMlong) + geom_line(stat = 'bin') +
+            ggtitle('Follow-up Time Hosp-Death Outcome') + theme_minimal() + theme(legend.position = 'top')
+      
+      ggsave(here('Results', dose_analysis, current_analysis, 'graph_time_outcome_hosp_death_matched_rem_12_doses.pdf'),
+             dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
+}
+
+# Creating Outcomes Analysis Pipeline
+# 2.1 Outcome = COVID-19 Infection
+if(DO_INFECTION){
+      # Main Analysis
+      fit <- survfit2(Surv(outcome_covid_time, outcome_covid_status == 2) ~ tx_group, 
+                      data = dfREMlong)
+      
+      saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_covid.RDS'))
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_covid_rem_12_.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_covid_rem_12_confint.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      dfREM_covid <- tmerge_all_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+            data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_covid_period_all.csv'), sep = ';', row.names = F)
+      
+      
+      dfREM_covid <- tmerge_three_periods(dfREMlong, 'outcome_covid_time', 'outcome_covid_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+            data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_covid_period_three.csv'), sep = ';', row.names = F)
+      
+      if(DO_SUBGROUP_ANALYSIS){
+            # Sub-group Analysis 
+            temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_covid, outcome = 'outcome_covid')
+            subgroup.temp.results <- do.call(bind_rows, temp.results)
+            subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+            
+            write.table(subgroup.temp.results,
+                        here('Results', dose_analysis, current_analysis, 'subgroup_outcome_covid_three_periods.csv'), sep = ';', row.names = F)
+      }      
+}
+
+# 2.2 Outcome = COVID-19 Hospitalization
+if(DO_HOSP){
+      # Main Analysis
+      fit <- survfit2(Surv(outcome_hosp_time, outcome_hosp_status == 2) ~ tx_group, 
+                      data = dfREMlong)
+      
+      saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_hosp.RDS'))
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_rem_12_.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_rem_12_confint.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 30),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_rem_12_subset_0_30.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      dfREM_hosp <- tmerge_all_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+            data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_period_all.csv'), sep = ';', row.names = F)
+      
+      dfREM_hosp <- tmerge_three_periods(dfREMlong, 'outcome_hosp_time', 'outcome_hosp_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+            data = dfREM_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_period_three.csv'), sep = ';', row.names = F)
+      
+      if(DO_SUBGROUP_ANALYSIS){
+            # Subgroup Analysis
+            temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_hosp, outcome = 'outcome_hosp')
+            subgroup.temp.results <- do.call(bind_rows, temp.results)
+            subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+            
+            write.table(subgroup.temp.results,
+                        here('Results', dose_analysis, current_analysis, 'subgroup_outcome_hosp_three_periods.csv'), sep = ';', row.names = F)
+      }}
+
+# 2.3 Outcome = COVID-19 Severe Hospitalization
+if(DO_SEVERE_HOSP){
+      # Main Analysis
+      fit <- survfit2(Surv(outcome_hosp_severe_time, outcome_hosp_severe_status == 2) ~ tx_group, 
+                      data = dfREMlong)
+      
+      saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_hosp_severe.RDS'))
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_severe_rem_12_.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_severe_rem_12_confint.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      
+      dfREM_hosp_severe <- tmerge_all_periods(dfREMlong, 'outcome_hosp_severe_time', 'outcome_hosp_severe_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_hosp_severe) %>% 
+            broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_severe_period_all.csv'), sep = ';', row.names = F)
+      
+      dfREM_hosp_severe <- tmerge_three_periods(dfREMlong, 'outcome_hosp_severe_time', 'outcome_hosp_severe_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+            data = dfREM_hosp_severe) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_severe_period_three.csv'), sep = ';', row.names = F)
+      
+}
+
+# 2.4 Outcome = COVID-19 Death
+if(DO_DEATH){
+      # Main Analysis
+      fit <- survfit2(Surv(outcome_death_time, outcome_death_status == 2) ~ tx_group, 
+                      data = dfREMlong)
+      
+      saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_death.RDS'))
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_death_rem_12_.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_death_rem_12_confint.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      dfREM_death <- tmerge_all_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% 
+            broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_death_period_all.csv'), sep = ';', row.names = F)
+      
+      dfREM_death <- tmerge_three_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_death) %>% 
+            broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_death_period_three.csv'), sep = ';', row.names = F)
+      
+      if(DO_SUBGROUP_ANALYSIS){
+            # Subgroup Analysis
+            temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_death, outcome = 'outcome_death')
+            subgroup.temp.results <- do.call(bind_rows, temp.results)
+            subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+            
+            write.table(subgroup.temp.results,
+                        here('Results', dose_analysis, current_analysis, 'subgroup_outcome_death_three_periods.csv'), sep = ';', row.names = F)
+            
+      }}
+
+# 2.5 Outcome = COVID-19 Hospitalization OR Death
+if(DO_HOSP_DEATH){
+      # Main Analysis
+      fit <- survfit2(Surv(outcome_hosp_death_time, outcome_hosp_death_status == 2) ~ tx_group, 
+                      data = dfREMlong)
+      
+      saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_hosp_death.RDS'))
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_death_rem_12_.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_death_rem_12_confint.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 30),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_death_rem_12_subset_0_30.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 14),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_hosp_death_rem_12_subset_0_14.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      dfREM_hosp_death <- tmerge_all_periods(dfREMlong, 'outcome_hosp_death_time', 'outcome_hosp_death_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, data = dfREM_hosp_death) %>% 
+            broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_death_period_all.csv'), sep = ';', row.names = F)
+      
+      dfREM_hosp_death <- tmerge_three_periods(dfREMlong, 'outcome_hosp_death_time', 'outcome_hosp_death_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+            data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
+      
+      if(DO_SUBGROUP_ANALYSIS){
+            # Subgroup Analysis
+            temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_hosp_death, outcome = 'outcome_hosp_death')
+            subgroup.temp.results <- do.call(bind_rows, temp.results)
+            subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+            
+            write.table(subgroup.temp.results,
+                        here('Results', dose_analysis, current_analysis, 'subgroup_outcome_hosp_death_three_periods.csv'), sep = ';', row.names = F)
+      }
+}
+
+# Creating Additional Analysis
+# 3.1 Outcome = Non-COVID-19 Death Analysis
+if(DO_NON_COVID_DEATH){
+      # Main Analysis
+      fit <- survfit2(Surv(outcome_death_time, outcome_death_status == 1) ~ tx_group, 
+                      data = dfREMlong)
+      
+      saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_noncovid_death.RDS'))
+      
+      temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                                legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                                palette = c("#E7B800","#2E9FDF"), risk.table = T)
+      
+      pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_noncovid_death_rem_12_.pdf'))
+      print(temp.cumhaz, newpage = FALSE)
+      dev.off()
+      
+      dfREM_death <- tmerge_all_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% 
+            broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_noncovid_death_period_all.csv'), sep = ';', row.names = F)
+      
+      dfREM_death <- tmerge_three_periods(dfREMlong, 'outcome_death_time', 'outcome_death_status')
+      
+      coxph(Surv(tstart, tstop, outcome == 1) ~ period, data = dfREM_death) %>% 
+            broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            write.table(here('Results', dose_analysis, current_analysis, 'outcome_noncovid_death_period_three.csv'), sep = ';', row.names = F)
+      
+      if(DO_SUBGROUP_ANALYSIS){      
+            # Subgroup Analysis
+            temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_death, outcome = 'outcome_death', outcome_number = 1)
+            subgroup.temp.results <- do.call(bind_rows, temp.results)
+            subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+            
+            write.table(subgroup.temp.results,
+                        here('Results', dose_analysis, current_analysis, 'subgroup_outcome_noncovid_death_three_periods.csv'), sep = ';', row.names = F)
+      }}
+
+# 3.2 Competing Risk Analysis
+if(DO_COMPETING_RISK){
+      # Cumulative Incidence - Pseudohazards (Cuminc)
+      # Outcome COVID Hospitalization or COVID Death vs Non-COVID Death
+      dfREM_hosp_death_cuminc <- dfREM_hosp_death %>% mutate(outcome_hosp_death_status = factor(outcome_hosp_death_status, levels = 0:2,
+                                                                                                labels = c('censor', 'noncovid_death', 'covid_hosp_death')))
+      
+      crr(Surv(outcome_hosp_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+            broom::tidy() %>% 
+            write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_hosp_death_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
+      
+      crr(Surv(outcome_hosp_death_time, outcome_hosp_death_status) ~ period, data = dfREM_hosp_death_cuminc, id = new_id, failcode = 'covid_hosp_death') %>%
+            broom::tidy() %>% 
+            write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_hosp_death_three_periods_failcode_covid_hosp_death.csv'), sep = ';', row.names = F)
+      
+      
+      # Outcome COVID Hospitalization vs Non-COVID Death
+      dfREM_hosp_cuminc <- dfREM_hosp %>% mutate(outcome_hosp_status = factor(outcome_hosp_status, levels = 0:2,
+                                                                              labels = c('censor', 'noncovid_death', 'covid_hosp')))
+      
+      crr(Surv(outcome_hosp_time, outcome_hosp_status) ~ period, data = dfREM_hosp_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+            broom::tidy() %>% 
+            write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_hosp_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
+      
+      crr(Surv(outcome_hosp_time, outcome_hosp_status) ~ period, data = dfREM_hosp_cuminc, id = new_id, failcode = 'covid_hosp') %>%
+            broom::tidy() %>% 
+            write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_hosp_three_periods_failcode_covid_hosp.csv'), sep = ';', row.names = F)
+      
+      
+      # Outcome COVID Death vs Non-COVID Death
+      dfREM_death_cuminc <- dfREM_death %>% mutate(outcome_death_status = factor(outcome_death_status, levels = 0:2,
+                                                                                 labels = c('censor', 'noncovid_death', 'covid_death')))
+      
+      cuminc_fit <- cuminc(Surv(outcome_death_time, outcome_death_status) ~ tx_group, 
+                           data = dfREM_death_cuminc, id = new_id)
+      
+      saveRDS(cuminc_fit, here('Results', dose_analysis, current_analysis, 'cuminc_outcome_death.RDS'))
+      
+      crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'noncovid_death') %>%
+            broom::tidy() %>% 
+            write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_death_three_periods_failcode_noncovid_death.csv'), sep = ';', row.names = F)
+      
+      crr(Surv(outcome_death_time, outcome_death_status) ~ period, data = dfREM_death_cuminc, id = new_id, failcode = 'covid_death') %>%
+            broom::tidy() %>% 
+            write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_death_three_periods_failcode_covid_death.csv'), sep = ';', row.names = F)
+      
+}
