@@ -23,10 +23,10 @@ library(tableone)
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
 ifelse(!dir.exists(here('Results', 'dose_12')), dir.create(here('Results', 'dose_12')), FALSE)
-ifelse(!dir.exists(here('Results', 'dose_12', 'rem_main_analysis')), dir.create(here('Results', 'dose_12', 'rem_main_analysis')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_12', 'rem_sens_analysis')), dir.create(here('Results', 'dose_12', 'rem_main_analysis')), FALSE)
 
 # Loading Auxiliary Objects for Analayis
-current_analysis <- 'rem_main_analysis'
+current_analysis <- 'rem_sens_analysis'
 source('aux_objects_rem_12.R')
 
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)

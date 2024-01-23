@@ -3,7 +3,6 @@
 # Author: Felippe Lazar, IDIAP Jordi Gol, 2023 #
 # ============================================================================ #
 
-
 library(tidyverse)
 library(here)
 library(readxl)
@@ -16,7 +15,7 @@ library(glue)
 library(forestplot)
 
 # Setting WD
-mainWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/'
+# mainWD <- '/Users/felippelazarneto/Google Drive (felippe.neto@alumni.usp.br)/SIDIAP Analysis/'
 
 # Figure 1 - Combination of COVID-19 Incidence, COVID-19 VOCs and Vaccine Rollout
 # Data exported from GISAID - pre-processed in another R Script.
@@ -58,7 +57,7 @@ g_voc <- covidVOC %>%
                         labels = c('Ancestor', 'Delta', 'Omicron')) 
 
 # Cumulative Vaccine Rollout
-vac_rollout <- read.table(glue(mainWD, 'Results/descriptive_until_2022/vacc_cum_rollout_by_dose.csv'), 
+vac_rollout <- read.table('Results/descriptive_until_2022/vacc_cum_rollout_by_dose.csv', 
                           sep = ';', header = T)
 
 g_vac_rollout <- vac_rollout %>%
@@ -71,7 +70,7 @@ g_vac_rollout <- vac_rollout %>%
       labs(y = 'proportion of vaccinated individuals (%)', x = '', fill = '')
 
 # Cumulative COVID-19
-covid_cases <- read.table(glue(mainWD, 'Results/descriptive_until_2022/covid_frequency.csv'), 
+covid_cases <- read.table('Results/descriptive_until_2022/covid_frequency.csv', 
                           sep = ';', header = T)
 
 g_covid <- covid_cases %>%
@@ -119,7 +118,8 @@ create_forest_table_subgroup <- function(file_forest){
                   contrast == '(V2 7D+) - (no-vax)' ~ 'Fully Vaccinated',
                   contrast == '(V3 14-60D) - (no-vax)' ~ 'Booster 14 - 60 days',
                   contrast == '(V3 60+) - (no-vax)' ~ 'Booster 60 days+'
-            ))
+            )) %>%
+            filter(!is.na(contrast))
       
       return(forest_table)
 }
@@ -127,7 +127,7 @@ create_forest_table_subgroup <- function(file_forest){
 subgroup <- 'age_bin_65|gender|cancer_diagnosis_time_bin_0|CCI_Metastatic_Solid_Tumor|cancer_dx_lung|cancer_group_hemathological|covid_voc|vac_mRNA_12'
 
 # Forest Table 1st and 2nd Dose
-file_forest <- paste(mainWD, 'Results/dose_12/rem_main_analysis', 'subgroup_outcome_hosp_death_three_periods.csv', sep = '/')
+file_forest <- paste('Results/dose_12/rem_main_analysis', 'subgroup_outcome_hosp_death_three_periods.csv', sep = '/')
 forest_table <- create_forest_table_subgroup(file_forest)
 
 forest_sg_12 <- forest_table %>% 
@@ -178,7 +178,7 @@ forest_sg_12 <- forest_table %>%
       fp_insert_row(term = 'A. Initial Vaccination Scheme',  position = 1, is.summary = T)
 
 
-file_forest <- paste(mainWD, 'Results/dose_3/rem_main_analysis', 'subgroup_outcome_hosp_death_three_periods.csv', sep = '/')
+file_forest <- paste('Results/dose_3/rem_main_analysis', 'subgroup_outcome_hosp_death_three_periods.csv', sep = '/')
 forest_table <- create_forest_table_subgroup(file_forest)
 
 forest_sg_3 <- forest_table %>% 
@@ -294,7 +294,7 @@ files_main_results <- list(
 
 string_regex_results = paste0('(', paste(names(files_main_results), collapse = '|'), ')')
 
-file_forest <- list.files(paste0(mainWD, 'Results/dose_12/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
+file_forest <- list.files('Results/dose_12/rem_main_analysis', pattern = string_regex_results, full.names = T)
 forest_table <- create_forest_table_main_results(file_forest)
 
 graph_main_12 <- forest_table %>% 
@@ -336,7 +336,7 @@ graph_main_12 <- forest_table %>%
       fp_add_header(term = 'A. Initial Vaccination Scheme',  position = 1, is.summary = T) %>%
       fp_add_lines("lightgray")
 
-file_forest <- list.files(paste0(mainWD, 'Results/dose_3/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
+file_forest <- list.files('Results/dose_3/rem_main_analysis', pattern = string_regex_results, full.names = T)
 forest_table <- create_forest_table_main_results(file_forest)
 
 graph_main_3 <- forest_table %>% 
@@ -391,9 +391,9 @@ upViewport(1)
 dev.off()
 
 # Plotting Both Together Main Results
-file_forest_rem_12 <- list.files(paste0(mainWD, 'Results/dose_12/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
+file_forest_rem_12 <- list.files('Results/dose_12/rem_main_analysis', pattern = string_regex_results, full.names = T)
 forest_table_rem_12 <- create_forest_table_main_results(file_forest_rem_12)
-file_forest_rem_3 <- list.files(paste0(mainWD, 'Results/dose_3/rem_main_analysis', sep='/'), pattern = string_regex_results, full.names = T)
+file_forest_rem_3 <- list.files('Results/dose_3/rem_main_analysis', pattern = string_regex_results, full.names = T)
 forest_table_rem_3 <- create_forest_table_main_results(file_forest_rem_3)
 
 forest_table <- bind_rows(forest_table_rem_12 %>% arrange(outcome), forest_table_rem_3 %>% arrange(outcome))
