@@ -307,6 +307,40 @@ rm(covidHosp)
 rm(covidCancerHosp)
 rm(covidSevere)
 
+#-- Getting Information on Seasonal Influenza Vaccine
+# IDX - Seasonal Influenza Vaccine
+# Concept ID 40223153 = 'Influenza, seasonal, injectable'
+# Joining with the Cancer Cohort
+influenzaVaccineCancer <- cancerCohort %>%
+      left_join(cdm$drug_exposure %>% 
+                      filter(drug_concept_id == '40213153') %>%
+                      select(person_id, drug_concept_id, drug_exposure_start_date) %>% collect(), 
+                by = c('subject_id' = 'person_id')) %>%
+      rename(drug_exposure_date = drug_exposure_start_date) %>%
+      distinct(subject_id, drug_exposure_date)
+
+# Filtering by Date, and Numbering Vaccine Doses
+influenzaVaccineCancer <- influenzaVaccineCancer %>%
+      filter(drug_exposure_date >= as.Date.character('27/12/2019', format = '%d/%m/%Y')) %>%
+      arrange(subject_id, drug_exposure_date) %>%
+      mutate(dose_number = unlist(mapply(
+            function(len, val) if (val == 0) rep(0, len) else 1:len,
+            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values))) %>%
+      mutate(flu_vac_lag_days = as.numeric(drug_exposure_date - lag(drug_exposure_date))) %>%
+      mutate(flu_vac_lag_days = ifelse(dose_number == 1, NA, flu_vac_lag_days)) %>%
+      filter(coalesce(flu_vac_lag_days > 60, T)) %>%
+      mutate(dose_number = unlist(mapply(
+            function(len, val) if (val == 0) rep(0, len) else 1:len,
+            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+
+# Transforming in wide format
+influenzaVaccineCancerWide <- influenzaVaccineCancer %>%
+      pivot_wider(id_cols = subject_id, names_from = c('dose_number'), 
+                  values_from = c('drug_exposure_date'),
+                  names_glue = "{.value}_{dose_number}") %>%
+      rename_with(~str_replace(., 'drug', 'flu_vac')) %>%
+      select(-ends_with('_NA'))
+
 #-- Getting MEDEA values
 # Importing MEDEA Concepts
 medea2001 <- cdm$observation %>% 
@@ -489,6 +523,7 @@ cancerMerged <- cancerCohort %>%
   left_join(covidCancerHospWide, by = c('subject_id')) %>%
   left_join(covidSevereHospWide, by = c('subject_id')) %>%
   left_join(cancerVaccineWide, by = c('subject_id')) %>%
+  left_join(influenzaVaccineCancerWide, by = c('subject_id')) %>%
   left_join(cancerCCIWide, by = c('subject_id')) %>%
   left_join(medea2011, by = c('subject_id' = 'person_id')) %>%
   left_join(medea2001, by = c('subject_id' = 'person_id')) %>%
