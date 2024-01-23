@@ -290,7 +290,7 @@ dfREMlong <- dfREMlong %>%
          cancer_diagnosis_time_bin_1 = if_else(cancer_diagnosis_time %in% c(0, 1), '< 2y', '2-5yr'),
          cancer_diagnosis_time_bin_2 = if_else(cancer_diagnosis_time %in% c(0, 1, 2), '< 3y', '3-5yr'),
          cancer_diagnosis_time_bin_3 = if_else(cancer_diagnosis_time %in% c(0, 1, 2, 3), '< 4y', '4-5yr'),
-         vac_mRNA_12 = if_else(vac_scheme != 'AZ-ChAdOx1-AZ-ChAdOx1', 1, 0),
+         vac_mRNA_12 = if_else(vac_concept_id_1 != 'AZ-ChAdOx1', 1, 0),
          vac_diff_vac = if_else(vac_concept_id_2 != vac_concept_id_3, 1, 0),
          vac_heterologous = case_when(
            vac_concept_id_2 %in% c('Pfizer-mRNA-BNT162b', 'Moderna-mRNA-1273') &

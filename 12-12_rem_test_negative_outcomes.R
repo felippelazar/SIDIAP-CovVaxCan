@@ -26,7 +26,6 @@ ifelse(!dir.exists(here('Results', 'dose_12', 'negative outcomes')), dir.create(
 # We will need to iterate through this table
 df_negative_outcomes <- read.csv(here('NCO.csv'), sep = ';', header=T)
 
-
 for (negative_outcome_id in df_negative_outcomes$ConceptId) {
       type_var <- df_negative_outcomes$Type[df_negative_outcomes$ConceptId == negative_outcome_id]
       

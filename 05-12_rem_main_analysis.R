@@ -26,8 +26,8 @@ ifelse(!dir.exists(here('Results', 'dose_12')), dir.create(here('Results', 'dose
 ifelse(!dir.exists(here('Results', 'dose_12', 'rem_main_analysis')), dir.create(here('Results', 'dose_12', 'rem_main_analysis')), FALSE)
 
 # Loading Auxiliary Objects for Analayis
-source('aux_objects_rem_12.R')
 current_analysis <- 'rem_main_analysis'
+source('aux_objects_rem_12.R')
 
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
 DO_DESCRIPTIVE <- TRUE
@@ -224,9 +224,7 @@ dfREMControl <- dfREM %>%
   dplyr::select(starts_with('gc'), 
          gv_gender_concept_id, 
          gv_aga_code, 
-         gv_cancer_diagnosis_time, 
-         #gv_CCI_Metastatic_Solid_Tumor,
-         #gv_visits_outpatient_cat
+         gv_cancer_diagnosis_time
          ) %>%
   mutate(tx_group = 0) %>%
   setNames(gsub('gc_', '', names(.))) %>%
@@ -697,7 +695,7 @@ if(DO_HOSP_DEATH){
       coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
             data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
         broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
-        write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
+        write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_death_period_three_stratified.csv'), sep = ';', row.names = F)
       
       if(DO_SUBGROUP_ANALYSIS){
             # Subgroup Analysis

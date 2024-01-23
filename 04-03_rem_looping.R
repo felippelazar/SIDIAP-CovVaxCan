@@ -103,8 +103,7 @@ cancerREM_dose3 <- cancerREM_dose3 %>%
          hosp_severe_admission_date = exec(pmin, !!!rlang::syms(hosp_severe_admission_vars), na.rm = TRUE),
          ) %>%
   # Creating variable death due to COVID-19 (death with a positive test <= 28 days before death)
-  mutate(covid_death_date = case_when(
-    difftime(covid_date, death_date) <= 28 ~ death_date)) %>%
+  mutate(covid_death_date = case_when(death_date - covid_date <= 28 ~ death_date)) %>%
   select(-starts_with('covid_date_'), -starts_with('hosp_admission_date_'), -starts_with('hosp_severe_admission_date_'),
          -starts_with('hosp_discharge_date_'), -starts_with('hosp_severe_discharge_date_'))
 

@@ -23,8 +23,8 @@ ifelse(!dir.exists(here('Results', 'dose_3')), dir.create(here('Results', 'dose_
 ifelse(!dir.exists(here('Results', 'dose_3', 'rem_main_analysis')), dir.create(here('Results', 'dose_3', 'rem_main_analysis')), FALSE)
 
 # Loading Auxiliary Objects for Analayis
-source('aux_objects_rem_3.R')
 current_analysis <- 'rem_main_analysis'
+source('aux_objects_rem_3.R')
 
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
 DO_DESCRIPTIVE <- TRUE
@@ -218,8 +218,7 @@ dfREMControl <- dfREM %>%
                 gv_gender_concept_id, 
                 gv_aga_code, 
                 gv_cancer_diagnosis_time, 
-                #gv_CCI_Metastatic_Solid_Tumor,
-                #gv_visits_outpatient_cat
+                gv_vac_scheme
   ) %>%
   mutate(tx_group = 0) %>%
   setNames(gsub('gc_', '', names(.))) %>%
@@ -265,7 +264,7 @@ dfREMlong <- dfREMlong %>%
              cancer_diagnosis_time_bin_1 = if_else(cancer_diagnosis_time %in% c(0, 1), '< 2y', '2-5yr'),
              cancer_diagnosis_time_bin_2 = if_else(cancer_diagnosis_time %in% c(0, 1, 2), '< 3y', '3-5yr'),
              cancer_diagnosis_time_bin_3 = if_else(cancer_diagnosis_time %in% c(0, 1, 2, 3), '< 4y', '4-5yr'),
-             vac_mRNA_12 = if_else(vac_scheme != 'AZ-ChAdOx1-AZ-ChAdOx1', 1, 0),
+             vac_mRNA_12 = if_else(vac_concept_id_1 != 'AZ-ChAdOx1', 1, 0),
              vac_diff_vac = if_else(vac_concept_id_2 != vac_concept_id_3, 1, 0),
              vac_heterologous = case_when(
                    vac_concept_id_2 %in% c('Pfizer-mRNA-BNT162b', 'Moderna-mRNA-1273') &
@@ -699,7 +698,7 @@ if(DO_HOSP_DEATH){
             write.table(subgroup.temp.results,
                         here('Results', dose_analysis, current_analysis, 'subgroup_outcome_hosp_death_three_periods.csv'), sep = ';', row.names = F)
 }}
-
+dfREM_hosp_death$vac_mRNA_12
 # Creating Additional Analysis
 # 3.1 Outcome = Non-COVID-19 Death Analysis
 if(DO_NON_COVID_DEATH){
