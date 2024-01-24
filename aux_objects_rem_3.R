@@ -54,8 +54,9 @@ tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){
 tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status){
       
       df <- df %>%
-            mutate(p1_time = vac_exposure_time_3 + 14,
-                   p2_time = vac_exposure_time_3 + 60) %>%
+            mutate(p1_time = vac_exposure_time_3,
+                   p2_time = vac_exposure_time_3 + 14,
+                   p3_time = vac_exposure_time_3 + 60) %>%
             mutate(
                   delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
                   omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
@@ -66,16 +67,18 @@ tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status)
                     dose_three = tdc(vac_exposure_time_3),
                     p1 = tdc(p1_time),
                     p2 = tdc(p2_time),
+                    p3 = tdc(p3_time),
                     delta_voc = tdc(delta_voc_time),
                     omicron_voc = tdc(omicron_voc_time)
       )
       
       dft <- dft %>%
-            mutate(period = paste(p1, p2, sep='-')) %>%
+            mutate(period = paste(p1, p2, p3, sep='-')) %>%
             mutate(period = fct_case_when(
-                  period == '0-0' ~ 'no-vax',
-                  period == '1-0' ~ 'V3 14-60D',
-                  period == '1-1' ~ 'V3 60+'
+                  period == '0-0-0' ~ 'no-vax',
+                  period == '1-0-0' ~ 'V3 0-14D',
+                  period == '1-1-0' ~ 'V3 14-60D',
+                  period == '1-1-1' ~ 'V3 60+'
             )) %>% 
             mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
             mutate(covid_voc = fct_case_when(
@@ -108,7 +111,7 @@ tidyInteractionCox <- function(interaction_var, df, outcome, outcome_number = 2)
       m_obs <- df %>%
             mutate(ttotal = tstop - tstart) %>%
             group_by(across(c(interaction_var, 'period'))) %>%
-            summarise(n_events = sum(across('outcome') == outcome_number), n_obs = n(), exp_time = sum(across('ttotal')))
+            summarise(n_events = sum(across('outcome') == outcome_number), n_obs = sum(!duplicated(new_id)), exp_time = sum(across('ttotal')))
       
       tidy_contrasts <- m_contrasts %>%
             mutate(contrast2 = as.character(contrast)) %>%
@@ -173,7 +176,7 @@ vars_outcomes_status <- c('outcome_covid_status', 'outcome_hosp_status', 'outcom
 vars_outcomes_time <- c('outcome_covid_time', 'outcome_hosp_time', 'outcome_hosp_severe_time', 'outcome_death_time', 'outcome_hosp_death_time')
 
 vars_covid_tests <- c('n_covid_tests_0', 'n_covid_tests_1', 'n_covid_tests')
-vars_health_visits <- c('n_visits_outpatient', 'n_visits_telehealth')
+vars_health_visits <- c('n_visits_outpatient', 'n_visits_telehealth', 'n_visits_inpatient')
 
 vars_subgroup_analysis <- c('age_bin_60', 'age_bin_65', 'age_bin_70', 'age_bin_75', 'age_bin_80', 'age_bin_85',
                             'gender_concept_id', 'visits_outpatient_cat',

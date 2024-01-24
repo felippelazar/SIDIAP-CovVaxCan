@@ -187,7 +187,7 @@ for(j in 1:(length(date_list))){
     ## Propensity score 
     # Model: Age, sex, cancer diagnosis time, charlson index, MEDEA 2001 index, AGA, metastasis, health care usage and previous vac scheme
     model.ps <- glm(vac_day ~ age + gender_concept_id + cancer_diagnosis_time + charlson_index + 
-                      medea_group_2001 + aga_code + CCI_Metastatic_Solid_Tumor + visits_outpatient_cat, 
+                      medea_group_2001 + aga_code + CCI_Metastatic_Solid_Tumor + n_visits_outpatient, 
                    data = allCohort, family=binomial)
   
     # Predict onto dataset and group into 1% bands
