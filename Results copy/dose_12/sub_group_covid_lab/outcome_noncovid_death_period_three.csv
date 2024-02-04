@@ -1,4 +1,0 @@
-"term";"variable";"var_class";"var_type";"var_nlevels";"contrasts";"contrasts_type";"reference_row";"n_obs";"n_event";"exposure";"estimate";"std.error";"statistic";"p.value";"conf.low";"conf.high"
-"periodno-vax";"period";"factor";"categorical";3;"contr.treatment";"treatment";TRUE;199255;2544;7201680;NA;NA;NA;NA;NA;NA
-"periodV1 14D+";"period";"factor";"categorical";3;"contr.treatment";"treatment";FALSE;102153;212;1501516;0.354678144731694;0.075757658508714;-13.6823729205912;1.29399933075715e-42;0.305737980249116;0.411452271150014
-"periodV2 7D+";"period";"factor";"categorical";3;"contr.treatment";"treatment";FALSE;54262;490;3989319;0.306813025849514;0.0512108213549789;-23.0716227936232;8.92527504939937e-118;0.27751282830773;0.339206779754882
