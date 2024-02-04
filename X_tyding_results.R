@@ -296,7 +296,7 @@ tidy_add_main_results <- function(files_path, workbook){
 #----- Tidying Competitite Risk Analysis
 files_cuminc_analysis <- list(
       'cuminc_outcome_hosp_death_three_periods_failcode_noncovid_death.csv' = 'hosp death - noncovid death - three-periods',
-      'cuminc_outcome_hosp_death_three_periods_failcode_covid_hosp_death.csv' = 'hosp death - covid death - three-periods',
+      'cuminc_outcome_hosp_death_three_periods_failcode_covid_hosp_death.csv' = 'hosp death - covid hosp death - three-periods',
       'cuminc_outcome_hosp_three_periods_failcode_noncovid_death.csv' = 'hosp - noncovid death - three-periods',
       'cuminc_outcome_hosp_three_periods_failcode_covid_hosp.csv' = 'hosp - covid hosp - three-periods',
       'cuminc_outcome_death_three_periods_failcode_noncovid_death.csv' = 'death - noncovid death - three-periods',
@@ -537,7 +537,6 @@ for(descriptive_analysis in desc_analysis){
       
 }
 
-
 #--- Creating Forest Plots
 library(meta)
 library(forestplot)
@@ -557,7 +556,7 @@ subgroups_analysis <- list(
       'cancer_dx',
       'cancer_group',
       'covid_voc|vac_mRNA_12|visits_outpatient_cat',
-      'age_bin_65|gender|cancer_diagnosis_time_bin_0|CCI_Metastatic_Solid_Tumor|covid_voc|vac_mRNA_12',
+      'age_bin_65|gender|cancer_diagnosis_time_bin_0|CCI_Metastatic_Solid_Tumor|covid_voc|vac_mRNA_12'
       
 )
 
@@ -994,8 +993,6 @@ for(analysis in all_sens_analysis){
 
 
 
-
-
 # CODE FOR TESTING PLOTS - Main Results Plots
 file_forest <- list.files('Results/dose_12/rem_main_analysis', pattern = string_regex_results, full.names = T)
 forest_table <- create_forest_table_main_results(file_forest)
@@ -1313,20 +1310,98 @@ all_analysis <- list(
       'Results/dose_3/sub_group_tested_patients')
 
 # # Cuminc Curve
-# cuminc_death <- readRDS('Results/dose_12/rem_main_analysis/cuminc_outcome_death.RDS')
+cuminc_death <- readRDS(here('Results copy', dose_analysis, current_analysis, 'cuminc_outcome_death.RDS'))
 # ggsurvfit_death <- readRDS('Results/dose_12/rem_main_analysis/survfit2_outcome_death.RDS')
-# 
-# dfREMlong <- cuminc_death$data
-# cuminc_death %>%
-#       ggcuminc(outcome = c('covid_death', 'noncovid_death'))
-# 
-# survfit(Surv(outcome_hosp_death_time, outcome_hosp_death_status == 2) ~ tx_group, data = dfREMlong) %>%
-#       ggsurvfit()
-# 
-# 
-# dfREMlong <- dfREMlong %>%
-#       mutate(outcome_hosp_death_status = factor(outcome_hosp_death_status, 
-#                                                 levels = 0:2, labels = c('censor', 'non-covid death', 'hosp_death')))
-# 
-# cuminc(Surv(outcome_hosp_death_time, as.factor(outcome_hosp_death_status)) ~ tx_group,
-#        data = dfREMlong, id = new_id) %>% ggcuminc(outcome = c('hosp_death', 'non-covid death'))
+
+# Extracting Data
+dfREMlong <- cuminc_death$data
+
+# Correcting Death Status by the New Classification
+dfREMlong <- dfREMlong %>%
+      distinct(new_id, .keep_all = T) %>%
+      mutate(outcome_death_status = as.numeric(outcome_death_status) - 1) %>%
+      mutate(outcome_death_status = ifelse(outcome_death_status == 2 & coalesce(death_date - covid_date > 28, F), 1, outcome_death_status),
+             outcome_hosp_death_status = ifelse(outcome_hosp_death_status == 2 & coalesce(death_date - covid_date > 28, F) & is.na(hosp_admission_date), 1, outcome_hosp_death_status))
+
+ggplot(aes(x=log(1+n_visits_icu), fill = as.factor(tx_group)), data = dfREMlong) + 
+      geom_density() + facet_wrap(.~tx_group) + theme(legend.position = 'top')
+
+
+hist(dfREMlong$n_visits_inpatient)
+
+
+table(dfREMlong$vac_mRNA_12, dfREMlong$vac_concept_id_1)
+
+
+
+
+
+
+
+
+dfREMlong %>%
+      mutate(outcome_death_time = cut(outcome_death_time, breaks = seq(0, 360, 14))) %>%
+      group_by(outcome_death_time, tx_group, outcome_death_status) %>%
+      count() %>% 
+      pivot_wider(names_from = c('outcome_death_status'), values_from = 'n', values_fill = 0) %>%
+      ggplot(aes(x = `1`, y = `2`, color = `outcome_death_time`, label = `outcome_death_time`)) + geom_point() +
+      geom_text_repel() +
+      facet_wrap(.~tx_group) + 
+      theme(legend.position = 'none')
+
+dfREMlong %>%
+      mutate(outcome_death_time = cut(outcome_death_time, breaks = seq(0, 360, 14))) %>%
+      group_by(outcome_death_time, tx_group, outcome_death_status) %>%
+      count() %>% 
+      pivot_wider(names_from = c('outcome_death_status'), values_from = 'n', values_fill = 0) %>%
+      filter(!outcome_death_time %in% c('(0,14]', '(14,28]')) %>%
+      ggplot(aes(x = `1`, y = `2`)) + geom_point() +
+      geom_smooth(method = 'lm') +
+      stat_poly_eq(use_label(c("eq", "R2"))) +
+      facet_wrap(.~tx_group) + 
+      theme(legend.position = 'none')
+      
+
+dfREMlong %>%
+      mutate(outcome_hosp_death_time = cut(outcome_hosp_death_time, breaks = seq(0, 360, 14))) %>%
+      group_by(outcome_hosp_death_time, tx_group, outcome_hosp_death_status) %>%
+      count() %>% 
+      pivot_wider(names_from = c('tx_group', 'outcome_hosp_death_status'), values_from = 'n', values_fill = 0) %>%
+      mutate(diff_outcome_0 = `0_0` - `1_0`,
+             diff_outcome_1 = `0_1` - `1_1`, 
+             diff_outcome_2 = `0_2` - `1_2`) %>%
+      pivot_longer(cols = c('diff_outcome_0', 'diff_outcome_1', 'diff_outcome_2'), 
+                   names_to = 'diff_outcome_name', 
+                   values_to = 'diff_outcome_n') %>%
+      ggplot(aes(x = `outcome_hosp_death_time`, y = diff_outcome_n)) + geom_col() +
+      facet_wrap(.~diff_outcome_name, scales = 'free')
+
+dfREMlong %>%
+      mutate(outcome_death_time = cut(outcome_death_time, breaks = seq(0, 360, 14))) %>%
+      group_by(outcome_death_time, tx_group, outcome_death_status) %>%
+      count() %>% 
+      filter(outcome_death_status != 0) %>%
+      ggplot(aes(x = `outcome_death_time`, y = n, fill = as.factor(`outcome_death_status`))) + geom_col() +
+      facet_wrap(.~tx_group, nrow = 2) +
+      theme(legend.position = 'top')
+
+with(dfREMlong, difftime(ymd(covid_date), ymd(death_date)))
+difftime(dfREMlong$covid_date, dfREMlong$death_date)
+
+class(dfREMlong$covid_date)
+class(dfREMlong$death_date)
+
+summary(as.numeric(dfREMlong$death_date - dfREMlong$covid_date))
+
+cuminc_death %>%
+      ggcuminc(outcome = c('covid_death', 'noncovid_death'))
+
+survfit(Surv(outcome_hosp_death_time, outcome_hosp_death_status == 2) ~ tx_group, data = dfREMlong) %>%
+      ggsurvfit()
+
+dfREMlong <- dfREMlong %>%
+      mutate(outcome_hosp_death_status = factor(outcome_hosp_death_status,
+                                                levels = 0:2, labels = c('censor', 'non-covid death', 'hosp_death')))
+
+cuminc(Surv(outcome_hosp_death_time, as.factor(outcome_hosp_death_status)) ~ tx_group,
+       data = dfREMlong, id = new_id) %>% ggcuminc(outcome = c('hosp_death', 'non-covid death'))
