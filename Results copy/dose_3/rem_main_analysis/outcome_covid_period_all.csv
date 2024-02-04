@@ -1,7 +1,0 @@
-"term";"variable";"var_class";"var_type";"var_nlevels";"contrasts";"contrasts_type";"reference_row";"n_obs";"n_event";"exposure";"estimate";"std.error";"statistic";"p.value";"conf.low";"conf.high"
-"periodno-vax";"period";"factor";"categorical";6;"contr.treatment";"treatment";TRUE;61943;3838;2152520;NA;NA;NA;NA;NA;NA
-"periodV3 0-14D";"period";"factor";"categorical";6;"contr.treatment";"treatment";FALSE;54267;801;568099;0.624879979055947;0.045127503491622;-10.4192708396623;2.02499691607082e-25;0.571984170032986;0.682667473476482
-"periodV3 14-28D";"period";"factor";"categorical";6;"contr.treatment";"treatment";FALSE;28309;395;321310;0.461410838443515;0.0613965546751051;-12.597880243769;2.16895498274811e-36;0.409097616971516;0.520413595682155
-"periodV3 28-60D";"period";"factor";"categorical";6;"contr.treatment";"treatment";FALSE;18035;535;443233;0.551105369830932;0.0554675629437461;-10.7419403824071;6.46706715988141e-27;0.494334097342517;0.614396478594611
-"periodV3 60-120";"period";"factor";"categorical";6;"contr.treatment";"treatment";FALSE;21706;442;626072;0.655862401994143;0.064903540246942;-6.4989407895493;8.08874872799699e-11;0.57751961808677;0.74483268944969
-"periodV3 120+";"period";"factor";"categorical";6;"contr.treatment";"treatment";FALSE;9758;658;630310;1.06585351021599;0.0625280194601484;1.0199570815009;0.307748815885943;0.9429172331491;1.20481805327245
