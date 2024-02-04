@@ -6,6 +6,21 @@
 # Creating Dose Object
 dose_analysis <- 'dose_12'
 
+# Loading Data
+# # Cuminc Curve
+cuminc_death <- readRDS(here('Results copy', dose_analysis, current_analysis, 'cuminc_outcome_death.RDS'))
+# ggsurvfit_death <- readRDS('Results/dose_12/rem_main_analysis/survfit2_outcome_death.RDS')
+
+# Extracting Data
+dfREMlong <- cuminc_death$data
+
+# Correcting Death Status by the New Classification
+dfREMlong <- dfREMlong %>%
+      distinct(new_id, .keep_all = T) %>%
+      mutate(outcome_death_status = as.numeric(outcome_death_status) - 1) %>%
+      mutate(outcome_death_status = ifelse(outcome_death_status == 2 & coalesce(death_date - covid_date > 28, F), 1, outcome_death_status),
+             outcome_hosp_death_status = ifelse(outcome_hosp_death_status == 2 & coalesce(death_date - covid_date > 28, F) & is.na(hosp_admission_date), 1, outcome_hosp_death_status))
+
 # Creating tmerge function
 # Creating dataset with all periods
 tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){

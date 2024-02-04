@@ -467,6 +467,33 @@ cancerVisitsWide <- cancerCohort %>% select(subject_id) %>%
 rm(cancerVisits)
 rm(visitsWide)
 
+#-- Extracting ANY previous hospitalizations
+# Extracting cancer patients ANY hospitalizations
+cancerAnyHosp <- cancerCohort %>% select(subject_id) %>%
+      left_join(cdm$visit_occurrence %>% 
+                      filter(visit_concept_id == 9201) %>%
+                      filter(person_id %in% cancerIDS) %>% 
+                      filter(visit_start_date >= as.Date.character('27/11/2020', format = '%d/%m/%Y')) %>%
+                      filter(visit_start_date <= as.Date.character('30/06/2022', format = '%d/%m/%Y')) %>%
+                      select(person_id, visit_start_date, visit_concept_id) %>% collect(),
+                by = c('subject_id' = 'person_id')) %>%
+      distinct(subject_id, visit_start_date)
+
+# Filtering by Date, and Numbering Vaccine Doses
+cancerAnyHosp <- cancerAnyHosp %>%
+      arrange(subject_id, visit_start_date) %>%
+      mutate(hosp_number = unlist(mapply(
+            function(len, val) if (val == 0) rep(0, len) else 1:len,
+            rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+
+# Transforming in wide format
+cancerAnyHospWide <- cancerAnyHosp %>%
+      rename(any_hosp_admission_date = visit_start_date) %>%
+      pivot_wider(id_cols = subject_id, names_from = c('hosp_number'), 
+                  values_from = c('any_hosp_admission_date'),
+                  names_glue = "{.value}_{hosp_number}") %>%
+      select(-ends_with('_NA'))
+
 #-- Extracting PCR COVID-19 tests 
 # ID2 - [CovCanVac] COVID-19 Testing PCR or Antigen (Excluding Antibody), N = 7,622,831
 cohortTests <- cdm[[tableResults]] %>% filter(cohort_definition_id == 2) %>% collect()
@@ -523,7 +550,6 @@ cancerMerged <- cancerCohort %>%
   left_join(covidCancerHospWide, by = c('subject_id')) %>%
   left_join(covidSevereHospWide, by = c('subject_id')) %>%
   left_join(cancerVaccineWide, by = c('subject_id')) %>%
-  left_join(influenzaVaccineCancerWide, by = c('subject_id')) %>%
   left_join(cancerCCIWide, by = c('subject_id')) %>%
   left_join(medea2011, by = c('subject_id' = 'person_id')) %>%
   left_join(medea2001, by = c('subject_id' = 'person_id')) %>%

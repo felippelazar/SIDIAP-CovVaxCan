@@ -29,7 +29,7 @@ source('aux_objects_rem_12.R')
 current_analysis <- 'sub_group_tested_patients'
 
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
-DO_DESCRIPTIVE <- FALSE
+DO_DESCRIPTIVE <- TRUE
 DO_INFECTION <- FALSE
 DO_HOSP <- FALSE
 DO_SEVERE_HOSP <- FALSE
@@ -222,8 +222,6 @@ dfREMControl <- dfREM %>%
                 gv_gender_concept_id, 
                 gv_aga_code, 
                 gv_cancer_diagnosis_time, 
-                #gv_CCI_Metastatic_Solid_Tumor,
-                #gv_visits_outpatient_cat
   ) %>%
   mutate(tx_group = 0) %>%
   setNames(gsub('gc_', '', names(.))) %>%

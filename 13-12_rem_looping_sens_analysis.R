@@ -22,6 +22,8 @@ source('utils.R')
 # End date will be 1 month before Omicron is the dominant variant (> 50% of tests)
 # Creating Variables of Interest for Filtering Purposes of Elegibility
 cancerREM_dose12 <- cancerMerged %>%
+      left_join(influenzaVaccineCancerWide, by = c('subject_id')) %>%
+      left_join(cancerAnyHospWide, by = c('subject_id')) %>%
   mutate(minDate = as.Date.character('27/12/2020', format = '%d/%m/%Y'), # Vaccination Beginning
          maxDate = as.Date.character('20/11/2021', format = '%d/%m/%Y')) # 1 month before Omicron
 
@@ -54,6 +56,7 @@ cancerREM_dose12 <- cancerREM_dose12 %>%
 col_names_rem <- colnames(cancerREM_dose12)
 
 # Finding names of the columns that are associated with exposures and/or outcomes
+any_hosp_date_vars <- col_names_rem[grepl('any_hosp_admission_date_', col_names_rem)]
 flu_vac_date_vars <- col_names_rem[grepl('flu_vac_exposure_date_', col_names_rem)]
 covid_date_vars <- col_names_rem[grepl('covid_date_', col_names_rem)]
 hosp_admission_vars <- col_names_rem[grepl('hosp_admission_date_', col_names_rem)]
@@ -167,6 +170,11 @@ for(j in 1:(length(date_list))){
            across(starts_with('flu_vac_exposure_date_'), ~ if_else(.x > startDate, as.Date(NA), .x)),
            flu_vac_exposure_date = exec(pmax, !!!rlang::syms(flu_vac_date_vars), na.rm = TRUE),
            previous_flu_vac = if_else(!is.na(flu_vac_exposure_date), 1, 0)) %>%
+   # Setting to NA Any Hosp 30 days before baseline
+   mutate(across(starts_with('any_hosp_admission_'), ~ if_else(.x < (startDate - 30), as.Date(NA), .x)),
+         across(starts_with('any_hosp_admission_'), ~ if_else(.x > startDate, as.Date(NA), .x)),
+         any_hosp_admission_date = exec(pmax, !!!rlang::syms(any_hosp_date_vars), na.rm = TRUE),
+         previous_any_hosp_admission = if_else(!is.na(any_hosp_admission_date), 1, 0)) %>%
     # Create Enrollment Date
     mutate(enrol_date = startDate) %>%
     # Filtering by First Date of Diagnosis no More than 5 years from 27th December 2020 - Beginning of Vaccination in Catalunia
@@ -177,11 +185,13 @@ for(j in 1:(length(date_list))){
     # Filtering Those that Had Already Been Vaccinated, Had COVID-19, Died and did not have further follow-up Before the day of Vaccination
     filter(previous_covid == 0) %>%
     filter(previous_hosp_covid == 0) %>%
+    filter(previous_any_hosp_admission == 0) %>%
     filter(previous_death == 0) %>%
     filter(previous_vac_1 == 0) %>%
     filter(moved_out == 0) %>% 
     filter(noteligibleyet == 0) %>%
-    select(-starts_with('flu_vac_exposure_date_'))
+    select(-starts_with('flu_vac_exposure_date_')) %>%
+    select(-starts_with('any_hosp_admission_'))
     
     eligibles_1st2nd_sens[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date)
     ## Propensity score 
