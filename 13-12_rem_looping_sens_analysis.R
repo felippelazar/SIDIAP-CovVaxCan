@@ -59,7 +59,7 @@ col_names_rem <- colnames(cancerREM_dose12)
 any_hosp_date_vars <- col_names_rem[grepl('any_hosp_admission_date_', col_names_rem)]
 flu_vac_date_vars <- col_names_rem[grepl('flu_vac_exposure_date_', col_names_rem)]
 covid_date_vars <- col_names_rem[grepl('covid_date_', col_names_rem)]
-hosp_admission_vars <- col_names_rem[grepl('hosp_admission_date_', col_names_rem)]
+hosp_admission_vars <- col_names_rem[grepl('^hosp_admission_date_', col_names_rem)]
 hosp_severe_admission_vars <- col_names_rem[grepl('hosp_severe_admission_date_', col_names_rem)]
 
 # For Outcomes, creating NA occurrences for dates before minimum date or after maximum date 
@@ -91,7 +91,7 @@ cancerREM_dose12 <- cancerREM_dose12 %>%
 # Unselecting Columns to Make Lopping Faster
 dfz <- cancerREM_dose12 %>%
   select(-aga_name, -starts_with('infection_lag_days_'), 
-         -starts_with('vac_lag_days_'), -starts_with('CCI'),  CCI_Metastatic_Solid_Tumor, -starts_with('n_visits_'), 
+         -starts_with('vac_lag_days_'), -starts_with('CCI'),  CCI_Metastatic_Solid_Tumor,  
          -starts_with('n_covid_tests'), -starts_with('cancer_dx'), -starts_with('cancer_group'))
 
 detach(package:tidylog,unload=TRUE)
@@ -191,9 +191,9 @@ for(j in 1:(length(date_list))){
     filter(moved_out == 0) %>% 
     filter(noteligibleyet == 0) %>%
     select(-starts_with('flu_vac_exposure_date_')) %>%
-    select(-starts_with('any_hosp_admission_'))
+    select(-starts_with('any_hosp_admission_date_'))
     
-    eligibles_1st2nd_sens[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date)
+    eligibles_1st2nd_sens[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date, previous_flu_vac)
     ## Propensity score 
     # Model: Age, sex, cancer diagnosis time, charlson index, MEDEA 2001 index, AGA, metastasis, health care usage and previous vac scheme
     model.ps <- glm(vac_day ~ age + gender_concept_id + cancer_diagnosis_time + charlson_index + 

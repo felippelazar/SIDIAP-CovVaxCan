@@ -17,7 +17,7 @@ library(tidylog)
 
 # Setting Connection - Credentials and Database 
 db <- dbConnect(RPostgres::Postgres(),
-                dbname = Sys.getenv('DB_SERVER_DATABASE'),
+                dbname = Sys.getenv('SERVER_DBI'),
                 port = Sys.getenv('DB_PORT'),
                 host = Sys.getenv('DB_HOST'),
                 user = Sys.getenv('DB_USER'),
@@ -473,8 +473,8 @@ cancerAnyHosp <- cancerCohort %>% select(subject_id) %>%
       left_join(cdm$visit_occurrence %>% 
                       filter(visit_concept_id == 9201) %>%
                       filter(person_id %in% cancerIDS) %>% 
-                      filter(visit_start_date >= as.Date.character('27/11/2020', format = '%d/%m/%Y')) %>%
-                      filter(visit_start_date <= as.Date.character('30/06/2022', format = '%d/%m/%Y')) %>%
+                      filter(visit_start_date >= as.Date("2020-11-27")) %>%
+                      filter(visit_start_date <= as.Date("20222-06-30")) %>%
                       select(person_id, visit_start_date, visit_concept_id) %>% collect(),
                 by = c('subject_id' = 'person_id')) %>%
       distinct(subject_id, visit_start_date)
@@ -736,3 +736,4 @@ covidSevereHospWide_subgroup2 <- cancerCohort %>%
 rm(covidHosp_subgroup)
 rm(covidCancerHosp_subgroup)
 rm(covidSevere_subgroup)
+save.image

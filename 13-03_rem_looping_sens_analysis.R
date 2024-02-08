@@ -82,7 +82,7 @@ col_names_rem <- colnames(cancerREM_dose3)
 any_hosp_date_vars <- col_names_rem[grepl('any_hosp_admission_date_', col_names_rem)]
 flu_vac_date_vars <- col_names_rem[grepl('flu_vac_exposure_date_', col_names_rem)]
 covid_date_vars <- col_names_rem[grepl('covid_date_', col_names_rem)]
-hosp_admission_vars <- col_names_rem[grepl('hosp_admission_date_', col_names_rem)]
+hosp_admission_vars <- col_names_rem[grepl('^hosp_admission_date_', col_names_rem)]
 hosp_severe_admission_vars <- col_names_rem[grepl('hosp_severe_admission_date_', col_names_rem)]
 
 # For Outcomes, creating NA occurrences for dates before minimum date or after maximum date 
@@ -114,7 +114,7 @@ cancerREM_dose3 <- cancerREM_dose3 %>%
 # Un-selecting Columns to Make Lopping Faster
 dfz <- cancerREM_dose3 %>%
   select(-aga_name, -starts_with('infection_lag_days_'), 
-         -starts_with('vac_lag_days_'), -starts_with('CCI'),  CCI_Metastatic_Solid_Tumor, -starts_with('n_visits_'), 
+         -starts_with('vac_lag_days_'), -starts_with('CCI'),  CCI_Metastatic_Solid_Tumor,
          -starts_with('n_covid_tests'), -starts_with('cancer_dx'), -starts_with('cancer_group'))
 
 #-- Matching process: Exact matching of 1% bands, individual age and other covariates to adjustment
@@ -134,7 +134,6 @@ eligibles_3rd_sens <- list()
 # !! WARNING !!: Long run time
 detach(package:tidylog,unload=TRUE)
 for(j in 1:(length(date_list))){
-
   # Extract date from previously created date_list
   startDate <- date_list[j]
   # endDate <- date_list[j]+1 - End Date only useful for monthly/weekly or more than one day groupped matching 
@@ -208,9 +207,9 @@ for(j in 1:(length(date_list))){
     filter(moved_out == 0)%>% 
     filter(noteligibleyet == 0) %>%  
     select(-starts_with('flu_vac_exposure_date_')) %>%
-    select(-starts_with('any_hosp_admission_'))
+    select(-starts_with('any_hosp_admission_date_'))
     
-    eligibles_3rd_sens[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date)
+    eligibles_3rd_sens[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date, previous_flu_vac)
     
     ## Propensity score 
     # Model: Age, sex, cancer diagnosis time, charlson index, MEDEA 2001 index, AGA, metastasis, health care usage and previous vac scheme
@@ -248,7 +247,7 @@ for(j in 1:(length(date_list))){
                        'gv_previous_flu_vac' = 'gc_previous_flu_vac'
                 ))
     
-    rm(AllCohort)
+    rm(allCohort)
     rm(allVac)
     rm(AllControl)
     # Since merging with characteristics, this will assign all study IDs matching on these 

@@ -20,7 +20,7 @@ library(tableone)
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
 ifelse(!dir.exists(here('Results', 'dose_3')), dir.create(here('Results', 'dose_3')), FALSE)
-ifelse(!dir.exists(here('Results', 'dose_3', 'rem_sens_analysis')), dir.create(here('Results', 'dose_3', 'rem_main_analysis')), FALSE)
+ifelse(!dir.exists(here('Results', 'dose_3', 'rem_sens_analysis')), dir.create(here('Results', 'dose_3', 'rem_sens_analysis')), FALSE)
 
 # Loading Auxiliary Objects for Analayis
 current_analysis <- 'rem_sens_analysis'
@@ -248,7 +248,7 @@ cancerElegible <- cancerElegible %>%
   distinct(subject_id, .keep_all = T)
 
 # Descriptive Analysis - Matched Cohort
-cols_to_merge <- colnames(cancerREM_dose12)[!colnames(cancerREM_dose12) %in% colnames(dfREMlong)]
+cols_to_merge <- colnames(cancerREM_dose3)[!colnames(cancerREM_dose3) %in% colnames(dfREMlong)]
 dfREMlong <- dfREMlong %>%
       left_join(cancerREM_dose3 %>%
                       select(subject_id, all_of(cols_to_merge)),

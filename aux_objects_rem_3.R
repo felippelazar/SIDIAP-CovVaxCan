@@ -182,7 +182,7 @@ vars_subgroup_analysis <- c('age_bin_60', 'age_bin_65', 'age_bin_70', 'age_bin_7
                             'gender_concept_id', 'visits_outpatient_cat',
                             'cancer_diagnosis_time_bin_0', 'cancer_diagnosis_time_bin_1', 'cancer_diagnosis_time_bin_2',
                             'cancer_diagnosis_time_bin_3', 'CCI_Metastatic_Solid_Tumor',
-                            'covid_voc', 'vac_mRNA_12', 'vac_diff_vac', 'vac_heterologous',
+                            'vac_mRNA_12', 'vac_diff_vac', 'vac_heterologous',
                             'cancer_dx_breast', 'cancer_dx_prostate', 'cancer_dx_colorectal', 'cancer_dx_lung', 
                             'cancer_dx_head_neck', 'cancer_dx_endometrium', 'cancer_dx_bladder',
                             'cancer_dx_liver_biliary', 'cancer_dx_melanoma', 'cancer_dx_pancreas', 'cancer_dx_kidney', 
