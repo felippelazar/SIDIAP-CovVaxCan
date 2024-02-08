@@ -32,6 +32,7 @@ source('aux_objects_rem_12.R')
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
 DO_DESCRIPTIVE <- TRUE
 DO_INFECTION <- TRUE
+DO_ANY_HOSP <- TRU
 DO_HOSP <- TRUE
 DO_SEVERE_HOSP <- TRUE
 DO_DEATH <- TRUE
@@ -62,12 +63,14 @@ dfREM <-dfREM %>%
     # Control Group Outcomes
     gc_outcome_covid_date = pmin(gc_outcome_vac_date_1, gc_covid_date, gc_hosp_admission_date, gc_death_date, gv_vac_exposure_date_3, na.rm = T),
     gc_outcome_hosp_date = pmin(gc_outcome_vac_date_1, gc_hosp_admission_date, gc_death_date, gv_vac_exposure_date_3, na.rm = T),
+    gc_outcome_any_hosp_date = pmin(gc_outcome_vac_date_1, gc_any_hosp_admission_date, gc_death_date, gv_vac_exposure_date_3, na.rm = T),
     gc_outcome_hosp_severe_date = pmin(gc_outcome_vac_date_1, gc_hosp_severe_admission_date, gc_death_date, gv_vac_exposure_date_3, na.rm = T),
     gc_outcome_death_date = pmin(gc_outcome_vac_date_1, gc_death_date, gv_vac_exposure_date_3, na.rm = T),
     gc_outcome_hosp_death_date = pmin(gc_outcome_vac_date_1, gc_hosp_admission_date, gc_death_date, gv_vac_exposure_date_3, na.rm = T),
     # Vaccinated Group Outcomes
     gv_outcome_covid_date = pmin(gc_outcome_vac_date_1, gv_covid_date, gv_hosp_admission_date, gv_death_date, gv_vac_exposure_date_3, na.rm = T),
     gv_outcome_hosp_date = pmin(gc_outcome_vac_date_1, gv_hosp_admission_date, gv_death_date, gv_vac_exposure_date_3, na.rm = T),
+    gv_outcome_any_hosp_date = pmin(gc_outcome_vac_date_1, gv_any_hosp_admission_date, gv_death_date, gv_vac_exposure_date_3, na.rm = T),
     gv_outcome_hosp_severe_date = pmin(gc_outcome_vac_date_1, gv_hosp_severe_admission_date, gv_death_date, gv_vac_exposure_date_3, na.rm = T),
     gv_outcome_death_date = pmin(gc_outcome_vac_date_1, gv_death_date, gv_vac_exposure_date_3, na.rm = T),
     gv_outcome_hosp_death_date = pmin(gc_outcome_vac_date_1, gv_hosp_admission_date, gv_death_date, gv_vac_exposure_date_3, na.rm = T)
@@ -89,6 +92,13 @@ dfREM <-dfREM %>%
       gc_outcome_hosp_date == gc_outcome_vac_date_1 ~ 0, # 1st dose Vaccinated Control Group
       gc_outcome_hosp_date == gv_vac_exposure_date_3 ~ 0, # 3rd dose Vaccinated Group
       is.na(gc_outcome_hosp_date) ~ 0 # No Outcome
+    ), 
+    gc_outcome_any_hosp_status = case_when(
+      gc_outcome_any_hosp_date == gc_any_hosp_admission_date ~ 2, # Any Hospitalization
+      gc_outcome_any_hosp_date == gc_death_date ~ 1, # Death
+      gc_outcome_any_hosp_date == gc_outcome_vac_date_1 ~ 0, # 1st dose Vaccinated Control Group
+      gc_outcome_any_hosp_date == gv_vac_exposure_date_3 ~ 0, # 3rd dose Vaccinated Group
+      is.na(gc_outcome_any_hosp_date) ~ 0 # No Outcome
     ), 
     gc_outcome_hosp_severe_status = case_when(
       gc_outcome_hosp_severe_date == gc_hosp_severe_admission_date ~ 2, # COVID-19 Severe Hospitalization
@@ -127,6 +137,13 @@ dfREM <-dfREM %>%
       gv_outcome_hosp_date == gc_outcome_vac_date_1 ~ 0, # 1st dose Vaccinated Control Group
       gv_outcome_hosp_date == gv_vac_exposure_date_3 ~ 0, # 3rd dose Vaccinated Group
       is.na(gv_outcome_hosp_date) ~ 0 # No Outcome
+    ), 
+    gv_outcome_any_hosp_status = case_when(
+      gv_outcome_any_hosp_date == gv_any_hosp_admission_date ~ 2, # COVID-19 Hospitalization
+      gv_outcome_any_hosp_date == gv_death_date ~ 1, # Death
+      gv_outcome_any_hosp_date == gc_outcome_vac_date_1 ~ 0, # 1st dose Vaccinated Control Group
+      gv_outcome_any_hosp_date == gv_vac_exposure_date_3 ~ 0, # 3rd dose Vaccinated Group
+      is.na(gv_outcome_any_hosp_date) ~ 0 # No Outcome
     ), 
     gv_outcome_hosp_severe_status = case_when(
       gv_outcome_hosp_severe_date == gv_hosp_severe_admission_date ~ 2, # Severe COVID-19 Hospitalization
@@ -195,12 +212,14 @@ dfREM <- dfREM %>%
     # Control Group
     gc_outcome_covid_time = as.numeric(difftime(gc_outcome_covid_date, gv_vac_exposure_date_1,units = 'days')),
     gc_outcome_hosp_time = as.numeric(difftime(gc_outcome_hosp_date, gv_vac_exposure_date_1, units = 'days')),
+    gc_outcome_any_hosp_time = as.numeric(difftime(gc_outcome_any_hosp_date, gv_vac_exposure_date_1, units = 'days')),
     gc_outcome_hosp_severe_time = as.numeric(difftime(gc_outcome_hosp_severe_date, gv_vac_exposure_date_1, units = 'days')),
     gc_outcome_death_time = as.numeric(difftime(gc_outcome_death_date, gv_vac_exposure_date_1, units = 'days')),
     gc_outcome_hosp_death_time = as.numeric(difftime(gc_outcome_hosp_death_date, gv_vac_exposure_date_1, units = 'days')),
     # Vaccinated Group
     gv_outcome_covid_time = as.numeric(difftime(gv_outcome_covid_date, gv_vac_exposure_date_1, units = 'days')),
     gv_outcome_hosp_time = as.numeric(difftime(gv_outcome_hosp_date, gv_vac_exposure_date_1, units = 'days')),
+    gv_outcome_any_hosp_time = as.numeric(difftime(gv_outcome_any_hosp_date, gv_vac_exposure_date_1, units = 'days')),
     gv_outcome_hosp_severe_time = as.numeric(difftime(gv_outcome_hosp_severe_date, gv_vac_exposure_date_1, units = 'days')),
     gv_outcome_death_time = as.numeric(difftime(gv_outcome_death_date, gv_vac_exposure_date_1, units = 'days')),
     gv_outcome_hosp_death_time = as.numeric(difftime(gv_outcome_hosp_death_date, gv_vac_exposure_date_1, units = 'days'))
@@ -537,7 +556,68 @@ if(DO_HOSP){
             
             write.table(subgroup.temp.results,
                         here('Results', dose_analysis, current_analysis, 'subgroup_outcome_hosp_three_periods.csv'), sep = ';', row.names = F)
-}}
+      }}
+
+# 2.2 Outcome = Any Hospitalization
+if(DO_ANY_HOSP){
+  # Main Analysis
+  fit <- survfit2(Surv(outcome_any_hosp_time, outcome_any_hosp_status == 2) ~ tx_group, 
+                  data = dfREMlong)
+  
+  saveRDS(fit, here('Results', dose_analysis, current_analysis, 'survfit2_outcome_any_hosp.RDS'))
+  
+  temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180),
+                            legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                            palette = c("#E7B800","#2E9FDF"), risk.table = T)
+  
+  pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_any_hosp_rem_12_.pdf'))
+  print(temp.cumhaz, newpage = FALSE)
+  dev.off()
+  
+  temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 180), conf.int = T,
+                            legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                            palette = c("#E7B800","#2E9FDF"), risk.table = T)
+  
+  pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_any_hosp_rem_12_confint.pdf'))
+  print(temp.cumhaz, newpage = FALSE)
+  dev.off()
+  
+  temp.cumhaz <- ggsurvplot(fit, data = dfREMlong, fun = 'cumhaz', xlim = c(0, 30),
+                            legend.labs = c("Control", "Vaccinated"),   break.x.by = 30, ggtheme = theme_bw(), 
+                            palette = c("#E7B800","#2E9FDF"), risk.table = T)
+  
+  pdf(here('Results', dose_analysis, current_analysis, 'graph_curve_any_hosp_rem_12_subset_0_30.pdf'))
+  print(temp.cumhaz, newpage = FALSE)
+  dev.off()
+  
+  dfREM_any_hosp <- tmerge_all_periods(dfREMlong, 'outcome_any_hosp_time', 'outcome_any_hosp_status')
+  
+  coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+        data = dfREM_any_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%
+    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    write.table(here('Results', dose_analysis, current_analysis, 'outcome_any_hosp_period_all.csv'), sep = ';', row.names = F)
+  
+  dfREM_any_hosp <- tmerge_three_periods(dfREMlong, 'outcome_any_hosp_time', 'outcome_any_hosp_status')
+  
+  coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
+        data = dfREM_any_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    write.table(here('Results', dose_analysis, current_analysis, 'outcome_any_hosp_period_three.csv'), sep = ';', row.names = F)
+  
+  coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
+        data = dfREM_any_hosp) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
+    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    write.table(here('Results', dose_analysis, current_analysis, 'outcome_any_hosp_period_three_stratified.csv'), sep = ';', row.names = F)
+  
+  if(DO_SUBGROUP_ANALYSIS){
+    # Subgroup Analysis
+    temp.results <- lapply(vars_subgroup_analysis, tidyInteractionCox, df = dfREM_any_hosp, outcome = 'outcome_any_hosp')
+    subgroup.temp.results <- do.call(bind_rows, temp.results)
+    subgroup.temp.results <- apply(subgroup.temp.results, 2, as.character)
+    
+    write.table(subgroup.temp.results,
+                here('Results', dose_analysis, current_analysis, 'subgroup_outcome_any_hosp_three_periods.csv'), sep = ';', row.names = F)
+  }}
 
 # 2.3 Outcome = COVID-19 Severe Hospitalization
 if(DO_SEVERE_HOSP){

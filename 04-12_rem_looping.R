@@ -22,6 +22,7 @@ source('utils.R')
 # End date will be 1 month before Omicron is the dominant variant (> 50% of tests)
 # Creating Variables of Interest for Filtering Purposes of Elegibility
 cancerREM_dose12 <- cancerMerged %>%
+  left_join(cancerAnyHospWide, by = c('subject_id')) %>%
   mutate(minDate = as.Date.character('27/12/2020', format = '%d/%m/%Y'), # Vaccination Beginning
          maxDate = as.Date.character('20/11/2021', format = '%d/%m/%Y')) # 1 month before Omicron
 
@@ -54,8 +55,9 @@ cancerREM_dose12 <- cancerREM_dose12 %>%
 col_names_rem <- colnames(cancerREM_dose12)
 
 # Finding names of the columns that are associated with exposures and/or outcomes
+any_hosp_admission_vars <- col_names_rem[grepl('any_hosp_admission_date_', col_names_rem)]
 covid_date_vars <- col_names_rem[grepl('covid_date_', col_names_rem)]
-hosp_admission_vars <- col_names_rem[grepl('hosp_admission_date_', col_names_rem)]
+hosp_admission_vars <- col_names_rem[grepl('^hosp_admission_date_', col_names_rem)]
 hosp_severe_admission_vars <- col_names_rem[grepl('hosp_severe_admission_date_', col_names_rem)]
 
 # For Outcomes, creating NA occurrences for dates before minimum date or after maximum date 
@@ -63,10 +65,12 @@ cancerREM_dose12 <- cancerREM_dose12 %>%
   # NA occurrences for outcomes before minimum Date
   mutate(across(starts_with('covid_date'), ~ if_else(.x < minDate, as.Date(NA), .x)),
          across(starts_with('hosp_admission_date'), ~ if_else(.x < minDate, as.Date(NA), .x)),
+         across(starts_with('any_hosp_admission_date'), ~ if_else(.x < minDate, as.Date(NA), .x)),
          across(starts_with('hosp_severe_admission_date'), ~ if_else(.x < minDate, as.Date(NA), .x))) %>%
   # NA occurrences for outcomes after maximum Date
   mutate(across(starts_with('covid_date'), ~ if_else(.x > maxDate, as.Date(NA), .x)),
          across(starts_with('hosp_admission_date'), ~ if_else(.x > maxDate, as.Date(NA), .x)),
+         across(starts_with('any_hosp_admission_date'), ~ if_else(.x > maxDate, as.Date(NA), .x)),
          across(starts_with('hosp_severe_admission_date'), ~ if_else(.x > maxDate, as.Date(NA), .x)),
          across(starts_with('death_date'), ~ if_else(.x > maxDate, as.Date(NA), .x))) %>% 
   # NA ocurrences for vaccine exposure date greater than maximum date
@@ -158,6 +162,9 @@ for(j in 1:(length(date_list))){
     # Setting Vaccination Date to No if After end of period date and creating binary variable to use for GLM (PS matching) and filtering
     mutate(vac_exposure_date_1 = if_else(coalesce(vac_exposure_date_1 > startDate, T), as.Date(NA), vac_exposure_date_1),
            vac_day = if_else(!is.na(vac_exposure_date_1), 1, 0)) %>%
+    # Creating Outcome Next Hospitalization
+    mutate(across(starts_with('any_hosp_admission_'), ~ if_else(.x < startDate, as.Date(NA), .x)),
+           any_hosp_admission_date = exec(pmin, !!!rlang::syms(any_hosp_admission_vars), na.rm = TRUE)) %>%
     # Creating Cancer Diagnosis Variables - time from current start date to cancer diagnosis (first diagnosis)
     mutate(cancer_diagnosis_time = as.numeric(difftime(startDate, cancer_diag_first_date, units = 'days')/365),
            cancer_diagnosis_time = factor(floor(cancer_diagnosis_time))) %>%
@@ -174,7 +181,8 @@ for(j in 1:(length(date_list))){
     filter(previous_death == 0) %>%
     filter(previous_vac_1 == 0) %>%
     filter(moved_out == 0) %>% 
-    filter(noteligibleyet == 0)
+    filter(noteligibleyet == 0) %>%
+    select(-starts_with('any_hosp_admission_date_'))
     
     eligibles_1st2nd[[j]] <- allCohort %>% select(subject_id, age, age_group, cancer_diagnosis_time, vac_day, enrol_date)
     ## Propensity score 
@@ -195,7 +203,7 @@ for(j in 1:(length(date_list))){
       setNames(paste0('gv_', names(.)))
     
     # Creating dataset of un-vaccinated individuals 
-    AllControl <- allCohort %>%
+    allControl <- allCohort %>%
       filter(vac_day == 0) %>%
       setNames(paste0('gc_', names(.))) 
     
@@ -203,7 +211,7 @@ for(j in 1:(length(date_list))){
     # Exact match through propensity scores (grouped), age, AGA, cancer diagnosis time and metastasis
     # Merge the vaccination cohort with the whole cohort by the matching variables
     mergedCohort <- allVac %>%
-      left_join(AllControl, 
+      left_join(allControl, 
                 by = c('gv_ps_grp' = 'gc_ps_grp', 
                        'gv_gender_concept_id' = 'gc_gender_concept_id',
                        'gv_age_group_match' = 'gc_age_group_match',
@@ -211,9 +219,9 @@ for(j in 1:(length(date_list))){
                        'gv_cancer_diagnosis_time' = 'gc_cancer_diagnosis_time'
                        ))
   
-    rm(AllCohort)
+    rm(allCohort)
     rm(allVac)
-    rm(AllControl)
+    rm(allControl)
     # Since merging with characteristics, this will assign all study IDs matching on these 
     # characteristics per vaccinated person in mergedCohort (i.e. multiple IDs per vaccinated person)
     
