@@ -32,7 +32,7 @@ source('aux_objects_rem_12.R')
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
 DO_DESCRIPTIVE <- TRUE
 DO_INFECTION <- TRUE
-DO_ANY_HOSP <- TRU
+DO_ANY_HOSP <- TRUE
 DO_HOSP <- TRUE
 DO_SEVERE_HOSP <- TRUE
 DO_DEATH <- TRUE
