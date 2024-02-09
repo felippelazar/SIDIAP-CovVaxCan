@@ -54,3 +54,8 @@ ConceptId;OutcomeName;Type
 1177480;ibuprofen;drug_exposure
 1713332;amoxicilline;drug_exposure
 40213153;Influenza Vaccine;drug_exposure
+9202;Outpatient Visit;visit_ocurrence
+5083;Telehealth Visit;visit_ocurrence
+581476;Home Visit;visit_ocurrence
+32037;UCI Visit;visit_ocurrence
+
