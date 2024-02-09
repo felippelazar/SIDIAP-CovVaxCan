@@ -374,6 +374,7 @@ if(DO_DESCRIPTIVE){
              dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
       
 }
+rm(cancerElegible)
 
 # Creating Outcomes Analysis Pipeline
 # 2.1 Outcome = COVID-19 Infection
@@ -423,6 +424,7 @@ if(DO_INFECTION){
             write.table(subgroup.temp.results,
                         here('Results', dose_analysis, current_analysis, 'subgroup_outcome_covid_three_periods.csv'), sep = ';', row.names = F)}
 }
+rm(dfREM_covid)
 
 # 2.2 Outcome = COVID-19 Hospitalization
 if(DO_HOSP){
@@ -518,6 +520,7 @@ if(DO_SEVERE_HOSP){
             broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
             write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_severe_period_three.csv'), sep = ';', row.names = F)
 }
+rm(dfREM_hosp_severe)
 
 # 2.4 Outcome = COVID-19 Death
 if(DO_DEATH){
@@ -668,6 +671,9 @@ if(DO_NON_COVID_DEATH){
             write.table(subgroup.temp.results,
                         here('Results', dose_analysis, current_analysis, 'subgroup_outcome_noncovid_death_three_periods.csv'), sep = ';', row.names = F)
       }}
+rm(dfREM_death)
+rm(dfREM_hosp)
+rm(dfREM_hosp_death)
 
 # 3.2 Competing Risk Analysis
 if(DO_COMPETING_RISK){

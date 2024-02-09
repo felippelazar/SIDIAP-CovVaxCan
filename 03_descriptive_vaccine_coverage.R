@@ -476,3 +476,5 @@ temp.graph <- temp.table %>%
 
 ggsave(here('Results', 'descriptive', 'covid_diagnosis_time.pdf'), 
        dpi=600, height = 400*0.8, width=300*0.8, units = 'mm')
+
+rm(cancerDesc)

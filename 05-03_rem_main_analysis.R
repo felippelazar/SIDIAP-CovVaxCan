@@ -266,7 +266,7 @@ cancerElegible <- cancerElegible %>%
   distinct(subject_id, .keep_all = T)
 
 # Descriptive Analysis - Matched Cohort
-cols_to_merge <- colnames(cancerREM_dose12)[!colnames(cancerREM_dose12) %in% colnames(dfREMlong)]
+cols_to_merge <- colnames(cancerREM_dose3)[!colnames(cancerREM_dose3) %in% colnames(dfREMlong)]
 dfREMlong <- dfREMlong %>%
       left_join(cancerREM_dose3 %>%
                       select(subject_id, all_of(cols_to_merge)),
@@ -439,6 +439,7 @@ if(DO_DESCRIPTIVE){
              dpi=600, height = 400*0.5, width=300*0.5, units = 'mm')
 
 }
+rm(cancerElegible)
 
 # Creating Outcomes Analysis Pipeline
 # 2.1 Outcome = COVID-19 Infection
@@ -493,6 +494,7 @@ if(DO_INFECTION){
             write.table(subgroup.temp.results,
                         here('Results', dose_analysis, current_analysis, 'subgroup_outcome_covid_three_periods.csv'), sep = ';', row.names = F)}
 }
+rm(dfREM_covid)
 
 # 2.2 Outcome = COVID-19 Hospitalization
 if(DO_HOSP){
@@ -555,7 +557,6 @@ if(DO_HOSP){
                         here('Results', dose_analysis, current_analysis, 'subgroup_outcome_hosp_three_periods.csv'), sep = ';', row.names = F)
       }}
 
-
 # 2.2 Outcome = COVID-19 Hospitalization
 if(DO_ANY_HOSP){
   # Main Analysis
@@ -616,6 +617,7 @@ if(DO_ANY_HOSP){
     write.table(subgroup.temp.results,
                 here('Results', dose_analysis, current_analysis, 'subgroup_outcome_any_hosp_three_periods.csv'), sep = ';', row.names = F)
   }}
+rm(dfREM_any_hosp)
 
 # 2.3 Outcome = COVID-19 Severe Hospitalization
 if(DO_SEVERE_HOSP){
@@ -660,6 +662,7 @@ if(DO_SEVERE_HOSP){
         broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
         write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_severe_period_three_stratified.csv'), sep = ';', row.names = F)
 }
+rm(dfREM_hosp_severe)
 
 # 2.4 Outcome = COVID-19 Death
 if(DO_DEATH){
@@ -872,3 +875,6 @@ if(DO_COMPETING_RISK){
         broom::tidy() %>% 
         write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_death_three_periods_failcode_covid_death.csv'), sep = ';', row.names = F)
 }
+rm(dfREM_death)
+rm(dfREM_hosp)
+rm(dfREM_hosp_death)

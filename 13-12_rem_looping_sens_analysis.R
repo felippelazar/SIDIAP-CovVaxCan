@@ -56,7 +56,7 @@ cancerREM_dose12 <- cancerREM_dose12 %>%
 col_names_rem <- colnames(cancerREM_dose12)
 
 # Finding names of the columns that are associated with exposures and/or outcomes
-any_hosp_date_vars <- col_names_rem[grepl('any_hosp_admission_date_', col_names_rem)]
+any_hosp_admission_vars <- col_names_rem[grepl('any_hosp_admission_date_', col_names_rem)]
 flu_vac_date_vars <- col_names_rem[grepl('flu_vac_exposure_date_', col_names_rem)]
 covid_date_vars <- col_names_rem[grepl('covid_date_', col_names_rem)]
 hosp_admission_vars <- col_names_rem[grepl('^hosp_admission_date_', col_names_rem)]
@@ -170,11 +170,16 @@ for(j in 1:(length(date_list))){
            across(starts_with('flu_vac_exposure_date_'), ~ if_else(.x > startDate, as.Date(NA), .x)),
            flu_vac_exposure_date = exec(pmax, !!!rlang::syms(flu_vac_date_vars), na.rm = TRUE),
            previous_flu_vac = if_else(!is.na(flu_vac_exposure_date), 1, 0)) %>%
-   # Setting to NA Any Hosp 30 days before baseline
-   mutate(across(starts_with('any_hosp_admission_'), ~ if_else(.x < (startDate - 30), as.Date(NA), .x)),
-         across(starts_with('any_hosp_admission_'), ~ if_else(.x > startDate, as.Date(NA), .x)),
-         any_hosp_admission_date = exec(pmax, !!!rlang::syms(any_hosp_date_vars), na.rm = TRUE),
-         previous_any_hosp_admission = if_else(!is.na(any_hosp_admission_date), 1, 0)) %>%
+    # Setting to NA Any Hosp 30 days before baseline
+    left_join(dfz %>%
+                mutate(across(starts_with('any_hosp_admission_'), ~ if_else(.x < (startDate - 30), as.Date(NA), .x)),
+                       across(starts_with('any_hosp_admission_'), ~ if_else(.x > startDate, as.Date(NA), .x)),
+                       any_hosp_admission_date = exec(pmax, !!!rlang::syms(any_hosp_date_vars), na.rm = TRUE),
+                       previous_any_hosp_admission = if_else(!is.na(any_hosp_admission_date), 1, 0)) %>%
+                select(subject_id, previous_any_hosp_admission)) %>%
+    # Creating Outcome Next Hospitalization
+    mutate(across(starts_with('any_hosp_admission_'), ~ if_else(.x < startDate, as.Date(NA), .x)),
+           any_hosp_admission_date = exec(pmin, !!!rlang::syms(any_hosp_admission_vars), na.rm = TRUE)) %>%
     # Create Enrollment Date
     mutate(enrol_date = startDate) %>%
     # Filtering by First Date of Diagnosis no More than 5 years from 27th December 2020 - Beginning of Vaccination in Catalunia

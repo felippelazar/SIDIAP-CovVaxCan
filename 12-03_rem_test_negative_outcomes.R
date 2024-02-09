@@ -75,6 +75,30 @@ for (negative_outcome_id in df_negative_outcomes$ConceptId) {
       select(-ends_with('_NA'))
     
     cancerNOWide <- cancerCohort %>% select(subject_id) %>% left_join(cancerNOWide)
+  }else if(type_var == 'visit_ocurrence'){
+    cancerNO <- cancerCohort %>% 
+      select(subject_id) %>%
+      left_join(cdm$visit_occurrence %>% 
+                  filter(person_id %in% cancerIDS) %>%
+                  filter(visit_concept_id == negative_outcome_id) %>%
+                  select(person_id, visit_start_date, visit_concept_id) %>%
+                  collect(),
+                by = c('subject_id' = 'person_id')) %>%
+      filter(coalesce(visit_start_date >= as.Date.character('27/12/2020', format = '%d/%m/%Y'), TRUE)) %>%
+      arrange(subject_id, visit_start_date) %>%
+      mutate(outcome_number = unlist(mapply(
+        function(len, val) if (val == 0) rep(0, len) else 1:len,
+        rle(as.numeric(subject_id))$lengths, rle(as.numeric(subject_id))$values)))
+    
+    cancerNOWide <- cancerNO %>%
+      rename("condition_start_date" = "visit_start_date") %>%
+      rename("condition_concept_id" = "visit_concept_id") %>%
+      pivot_wider(id_cols = subject_id, names_from = c('outcome_number'), 
+                  values_from = c('condition_start_date'),
+                  names_glue = "{.value}_{outcome_number}") %>%
+      select(-ends_with('_NA'))
+    
+    cancerNOWide <- cancerCohort %>% select(subject_id) %>% left_join(cancerNOWide)
   }
   
   # Next step is now adding this outcome to our REM analysis output

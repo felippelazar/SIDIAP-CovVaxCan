@@ -172,8 +172,8 @@ vars_cancer_group <- c("cancer_group_gastro_intestinal", "cancer_group_genito_ur
                        "cancer_group_nasopharynx", "cancer_group_neuroendocrine", "cancer_group_other", 
                        "cancer_group_other_2")
 
-vars_outcomes_status <- c('outcome_covid_status', 'outcome_hosp_status', 'outcome_hosp_severe_status', 'outcome_death_status', 'outcome_hosp_death_status')
-vars_outcomes_time <- c('outcome_covid_time', 'outcome_hosp_time', 'outcome_hosp_severe_time', 'outcome_death_time', 'outcome_hosp_death_time')
+vars_outcomes_status <- c('outcome_covid_status', 'outcome_hosp_status', 'outcome_any_hosp_status', 'outcome_hosp_severe_status', 'outcome_death_status', 'outcome_hosp_death_status')
+vars_outcomes_time <- c('outcome_covid_time', 'outcome_hosp_time', 'outcome_any_hosp_time', 'outcome_hosp_severe_time', 'outcome_death_time', 'outcome_hosp_death_time')
 
 vars_covid_tests <- c('n_covid_tests_0', 'n_covid_tests_1', 'n_covid_tests')
 vars_health_visits <- c('n_visits_outpatient', 'n_visits_telehealth', 'n_visits_inpatient')
