@@ -58,4 +58,4 @@ ConceptId;OutcomeName;Type
 5083;Telehealth Visit;visit_ocurrence
 581476;Home Visit;visit_ocurrence
 32037;UCI Visit;visit_ocurrence
-
+9201;Inpatient;visit_ocurrence

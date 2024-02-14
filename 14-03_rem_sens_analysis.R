@@ -41,7 +41,6 @@ DO_COMPETING_RISK <- TRUE
 #-- Merge batched data into the one dataframe
 dfREM <- do.call(bind_rows, z_merge_3rd_sens)
 
-
 # Creating Outcome Variables (Dates and Outcome Variables)
 # Outcome named 'covid' = COVID-19 infection
 # Outcome named 'hosp' = Hospitalization for COVID-19
@@ -302,6 +301,7 @@ if(DO_DESCRIPTIVE){
                                vars = c(vars_matching,
                                         vars_demographics,
                                         'vac_day',
+                                        'previous_flu_vac',
                                         vars_cancer_time,
                                         vars_cancer_dx,
                                         vars_cancer_group,
@@ -330,6 +330,7 @@ if(DO_DESCRIPTIVE){
                                vars = c('matched_any',
                                         vars_demographics,
                                         'vac_day',
+                                        'previous_flu_vac',
                                         vars_cancer_time,
                                         vars_cancer_dx,
                                         vars_cancer_group,
@@ -384,6 +385,7 @@ if(DO_DESCRIPTIVE){
                                         vars_cancer_dx,
                                         vars_cancer_group,
                                         'charlson_index',
+                                        'previous_flu_vac',
                                         vars_comorbidities,
                                         vars_health_visits,
                                         'visits_outpatient_cat'),
@@ -486,7 +488,7 @@ if(DO_INFECTION){
   
   coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
         data = dfREM_covid) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
-    broom.helpers::tidy_add_reference_rows() %>%  broom.helpers::tidy_add_n() %>%
+    #broom.helpers::tidy_add_reference_rows() %>%  broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_covid_period_three_stratified.csv'), sep = ';', row.names = F)
   
   if(DO_SUBGROUP_ANALYSIS){
@@ -548,7 +550,7 @@ if(DO_HOSP){
   
   coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
         data = dfREM_hosp) %>%   broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
-    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_period_three_stratified.csv'), sep = ';', row.names = F)
   
   if(DO_SUBGROUP_ANALYSIS){
@@ -609,7 +611,7 @@ if(DO_ANY_HOSP){
   
   coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
         data = dfREM_any_hosp) %>%   broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
-    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_any_hosp_period_three_stratified.csv'), sep = ';', row.names = F)
   
   if(DO_SUBGROUP_ANALYSIS){
@@ -663,7 +665,8 @@ if(DO_SEVERE_HOSP){
   
   coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
         data = dfREM_hosp_severe) %>% 
-    broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
+        #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_severe_period_three_stratified.csv'), sep = ';', row.names = F)
 }
 rm(dfREM_hosp_severe)
@@ -705,7 +708,8 @@ if(DO_DEATH){
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_death_period_three.csv'), sep = ';', row.names = F)
   
   coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), data = dfREM_death) %>% 
-    broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
+        #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_death_period_three_stratified.csv'), sep = ';', row.names = F)
   
   if(DO_SUBGROUP_ANALYSIS){
@@ -774,7 +778,7 @@ if(DO_HOSP_DEATH){
   
   coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 
         data = dfREM_hosp_death) %>% broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
-    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_death_period_three_stratified.csv'), sep = ';', row.names = F)
   
   
@@ -820,7 +824,7 @@ if(DO_NON_COVID_DEATH){
   
   coxph(Surv(tstart, tstop, outcome == 1) ~ period + strata(subject_id_pair), data = dfREM_death) %>% 
     broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>% 
-    broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+    #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
     write.table(here('Results', dose_analysis, current_analysis, 'outcome_noncovid_death_period_three_stratified.csv'), sep = ';', row.names = F)
   
   if(DO_SUBGROUP_ANALYSIS){
