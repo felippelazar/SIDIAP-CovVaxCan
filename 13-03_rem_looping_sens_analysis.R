@@ -190,7 +190,7 @@ for(j in 1:(length(date_list))){
    left_join(dfz %>%
                mutate(across(starts_with('any_hosp_admission_'), ~ if_else(.x < (startDate - 30), as.Date(NA), .x)),
                       across(starts_with('any_hosp_admission_'), ~ if_else(.x > startDate, as.Date(NA), .x)),
-                      any_hosp_admission_date = exec(pmax, !!!rlang::syms(any_hosp_date_vars), na.rm = TRUE),
+                      any_hosp_admission_date = exec(pmax, !!!rlang::syms(any_hosp_admission_vars), na.rm = TRUE),
                       previous_any_hosp_admission = if_else(!is.na(any_hosp_admission_date), 1, 0)) %>%
               select(subject_id, previous_any_hosp_admission)) %>%
     # Creating Outcome Next Hospitalization

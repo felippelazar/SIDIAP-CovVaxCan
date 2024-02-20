@@ -15,6 +15,7 @@ source('utils.R')
 library(emmeans)
 library(broom.helpers)
 library(glue)
+source('aux_objects_rem_12.R')
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
@@ -223,140 +224,6 @@ rm(dfREMControl)
 # Creating Unique Identifiers for Cox Analysis (as matches can be duplicated eventually)
 dfREMlong <- dfREMlong %>%
   mutate(new_id = 1:nrow(.))
-
-# Creating tmerge function
-# Creating dataset with all periods
-tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){
-  
-  df <- df %>%
-    mutate(p1_time = vac_exposure_time_1,
-           p2_time = if_else(coalesce(vac_exposure_time_1 + 14 > vac_exposure_time_2, F), NA, vac_exposure_time_1 + 14),
-           p3_time = if_else(coalesce(vac_exposure_time_1 + 59 > vac_exposure_time_2, F), NA, vac_exposure_time_1 + 59),
-           p4_time = if_else(coalesce(vac_exposure_time_1 + 59 > vac_exposure_time_2, F), NA, vac_exposure_time_1 + 59),
-           p5_time = vac_exposure_time_2,
-           p6_time = vac_exposure_time_2 + 14,
-           p7_time = vac_exposure_time_2 + 60,
-           p8_time = vac_exposure_time_2 + 60,
-           p9_time = vac_exposure_time_2 + 90,
-           p10_time = vac_exposure_time_2 + 120) %>%
-    mutate(other_voc_time = max(0, difftime(covidVOC[['Other VOC']], enrol_date, units = 'days')), 
-           delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')))
-  
-  dft <- tmerge(df, df, 
-                id=new_id, 
-                outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
-                dose_one = tdc(vac_exposure_time_1),
-                dose_two = tdc(vac_exposure_time_2),
-                dose_three = tdc(vac_exposure_time_3),
-                p1 = tdc(p1_time),
-                p2 = tdc(p2_time),
-                p3 = tdc(p3_time),
-                p4 = tdc(p4_time),
-                p5 = tdc(p5_time),
-                p6 = tdc(p6_time),
-                p7 = tdc(p7_time),
-                p8 = tdc(p8_time),
-                p9 = tdc(p9_time),
-                p10 = tdc(p10_time),
-                other_voc = tdc(other_voc_time),
-                delta_voc = tdc(delta_voc_time)
-  )
-  
-  dft <- dft %>%
-    mutate(period = paste(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, sep='-')) %>%
-    mutate(period = case_when(
-      period == '0-0-0-0-0-0-0-0-0-0' ~ 'no-vax',
-      period == '1-0-0-0-0-0-0-0-0-0' ~ 'V1 0-14D',
-      period == '1-1-0-0-0-0-0-0-0-0' ~ 'V1 14-59D',
-      period == '1-1-1-0-0-0-0-0-0-0' ~ 'V1 60D+',
-      period == '1-1-1-1-0-0-0-0-0-0' ~ 'V1 60D+',
-      period %in% c('1-1-0-0-1-0-0-0-0-0', '1-1-1-0-1-0-0-0-0-0', '1-1-1-1-1-0-0-0-0-0') ~ 'V1V2 0-13D',
-      period %in% c('1-1-0-0-1-1-0-0-0-0', '1-1-1-0-1-1-0-0-0-0', '1-1-1-1-1-1-0-0-0-0') ~ 'V1V2 14-59D',
-      period %in% c('1-1-0-0-1-1-1-0-0-0', '1-1-1-0-1-1-1-0-0-0', '1-1-1-1-1-1-1-0-0-0') ~ 'V1V2 14-59D',
-      period %in% c('1-1-0-0-1-1-1-1-0-0', '1-1-1-0-1-1-1-1-0-0', '1-1-1-1-1-1-1-1-0-0') ~ 'V1V2 60-89D',
-      period %in% c('1-1-0-0-1-1-1-1-1-0', '1-1-1-0-1-1-1-1-1-0', '1-1-1-1-1-1-1-1-1-0') ~ 'V1V2 90-120D',
-      period %in% c('1-1-0-0-1-1-1-1-1-1', '1-1-1-0-1-1-1-1-1-1') ~ 'V1V2 120D+'
-    )) %>% 
-    mutate(period = factor(period, levels = c('no-vax', 'V1 0-14D', 'V1 14-59D', 'V1 60D+', 'V1V2 0-13D', 'V1V2 14-59D',
-                                              'V1V2 60-89D', 'V1V2 90-120D', 'V1V2 120D+'))) %>%
-    mutate(voc = paste(other_voc, delta_voc, sep='-')) %>%
-    mutate(covid_voc = fct_case_when(
-      voc == '1-0' ~ 'Other VOC',
-      voc == '1-1' ~ 'Delta VOC'
-    ))
-  
-  return(dft)
-}
-
-# Creating Dataset with Three Periods
-tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status){
-  
-  df <- df %>%
-    mutate(p1_time = vac_exposure_time_1 + 14,
-           p2_time = vac_exposure_time_2 + 7) %>%
-    mutate(other_voc_time = max(0, difftime(covidVOC[['Other VOC']], enrol_date, units = 'days')), 
-           delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days'))
-    )
-  
-  dft <- tmerge(df, df, 
-                id=new_id, 
-                outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
-                dose_one = tdc(vac_exposure_time_1),
-                dose_two = tdc(vac_exposure_time_2),
-                dose_three = tdc(vac_exposure_time_3),
-                p1 = tdc(p1_time),
-                p2 = tdc(p2_time),
-                other_voc = tdc(other_voc_time),
-                delta_voc = tdc(delta_voc_time)
-  )
-  
-  dft <- dft %>%
-    mutate(period = paste(p1, p2, sep='-')) %>%
-    mutate(period = fct_case_when(
-      period == '0-0' ~ 'no-vax',
-      period == '1-0' ~ 'V1 14D+',
-      period == '1-1' ~ 'V2 7D+')) %>%
-    mutate(voc = paste(other_voc, delta_voc, sep='-')) %>%
-    mutate(covid_voc = fct_case_when(
-      voc == '1-0' ~ 'Other VOC',
-      voc == '1-1' ~ 'Delta VOC'
-    ))
-  
-  return(dft)
-}
-
-tidyInteractionCox <- function(interaction_var, df, outcome){
-  print(paste('Testing Interaction for Variable:', interaction_var))
-  
-  formulaStringInt <- paste("Surv(tstart, tstop, outcome == 2) ~", paste('period', interaction_var, sep="*"))
-  m <- coxph(as.formula(formulaStringInt), data=df)
-  
-  m_aic <- AIC(m)
-  m_bic <- BIC(m)
-  size  <- m$n
-  nevents <- m$nevent
-  
-  formulaStringNull <- paste("Surv(tstart, tstop, outcome == 2) ~", paste('period', interaction_var, sep="+"))
-  m_null <- coxph(as.formula(formulaStringNull), data=df)
-  
-  p_int_lrtest <- anova(m, m_null)[['Pr(>|Chi|)']][2]
-  
-  broom::tidy(m, conf.int = T)
-  
-  m_emeans <- emmeans(m, specs = c('period', interaction_var))
-  m_contrasts <- contrast(m_emeans, 'trt.vs.ctrl', by = interaction_var)
-  tidy_contrasts <- confint(m_contrasts, type = 'wald') %>% as.tibble() %>%
-    rename('term' = all_of(interaction_var)) %>%
-    mutate(term = as.character(term)) %>%
-    mutate(model_AIC = m_aic, 
-           model_BIC = m_bic,
-           model_size = size,
-           model_nevents = nevents,
-           model_p_value = p_int_lrtest,
-           model_interaction_var = interaction_var)
-  
-  return(tidy_contrasts)
-}
 
 #-- Analysis
 #-- Negative Outcome

@@ -771,7 +771,7 @@ if(DO_HOSP_DEATH){
       coxph(Surv(tstart, tstop, outcome == 2) ~ period, 
             data = dfREM_hosp_death) %>% 
             broom.helpers::tidy_and_attach(exponentiate=T, conf.int=T) %>%   
-            #broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
+            broom.helpers::tidy_add_reference_rows() %>% broom.helpers::tidy_add_n() %>%
         write.table(here('Results', dose_analysis, current_analysis, 'outcome_hosp_death_period_three.csv'), sep = ';', row.names = F)
       
       coxph(Surv(tstart, tstop, outcome == 2) ~ period + strata(subject_id_pair), 

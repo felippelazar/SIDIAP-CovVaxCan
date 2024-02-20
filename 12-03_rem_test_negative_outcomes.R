@@ -13,6 +13,7 @@ library(survminer)
 source('utils.R')
 library(broom.helpers)
 library(glue)
+source('aux_objects_rem_3.R')
 
 # Creating Folder for Exporting Files if Does Not Exist Yet
 ifelse(!dir.exists(here('Results')), dir.create(here('Results')), FALSE)
@@ -219,86 +220,6 @@ for (negative_outcome_id in df_negative_outcomes$ConceptId) {
   # Creating Unique Identifiers for Cox Analysis (as matches can be duplicated eventually)
   dfREMlong <- dfREMlong %>%
     mutate(new_id = 1:nrow(.))
-  
-  # Creating tmerge function
-  tmerge_all_periods <- function(df, outcome_column_time, outcome_column_status){
-    
-    df <- df %>%
-      mutate(p1_time = vac_exposure_time_3,
-             p2_time = vac_exposure_time_3 + 14,
-             p3_time = vac_exposure_time_3 + 28,
-             p4_time = vac_exposure_time_3 + 60,
-             p5_time = vac_exposure_time_3 + 120) %>%
-      mutate(
-        delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
-        omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
-    
-    dft <- tmerge(df, df, 
-                  id=new_id, 
-                  outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
-                  dose_three = tdc(vac_exposure_time_3),
-                  p1 = tdc(p1_time),
-                  p2 = tdc(p2_time),
-                  p3 = tdc(p3_time),
-                  p4 = tdc(p4_time),
-                  p5 = tdc(p5_time),
-                  delta_voc = tdc(delta_voc_time),
-                  omicron_voc = tdc(omicron_voc_time)
-    )
-    
-    dft <- dft %>%
-      mutate(period = paste(p1, p2, p3, p4, p5, sep='-')) %>%
-      mutate(period = fct_case_when(
-        period == '0-0-0-0-0' ~ 'no-vax',
-        period == '1-0-0-0-0' ~ 'V3 0-14D',
-        period == '1-1-0-0-0' ~ 'V3 14-28D',
-        period == '1-1-1-0-0' ~ 'V3 28-60D',
-        period == '1-1-1-1-0' ~ 'V3 60-120',
-        period == '1-1-1-1-1' ~ 'V3 120+'
-      )) %>% 
-      mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
-      mutate(covid_voc = fct_case_when(
-        voc == '1-0' ~ 'Delta VOC',
-        voc == '1-1' ~ 'Omicron VOC'
-      ))
-    
-    return(dft)
-  }
-  
-  tmerge_three_periods <- function(df, outcome_column_time, outcome_column_status){
-    
-    df <- df %>%
-      mutate(p1_time = vac_exposure_time_3 + 14,
-             p2_time = vac_exposure_time_3 + 60) %>%
-      mutate(
-        delta_voc_time = max(0, difftime(covidVOC[['Delta VOC']], enrol_date, units = 'days')),
-        omicron_voc_time = max(0, difftime(covidVOC[['Omicron VOC']], enrol_date, units = 'days')))
-    
-    dft <- tmerge(df, df, 
-                  id=new_id, 
-                  outcome = event(df[[outcome_column_time]], df[[outcome_column_status]]),
-                  dose_three = tdc(vac_exposure_time_3),
-                  p1 = tdc(p1_time),
-                  p2 = tdc(p2_time),
-                  delta_voc = tdc(delta_voc_time),
-                  omicron_voc = tdc(omicron_voc_time)
-    )
-    
-    dft <- dft %>%
-      mutate(period = paste(p1, p2, sep='-')) %>%
-      mutate(period = fct_case_when(
-        period == '0-0' ~ 'no-vax',
-        period == '1-0' ~ 'V3 14-60D',
-        period == '1-1' ~ 'V3 60+'
-      )) %>% 
-      mutate(voc = paste(delta_voc, omicron_voc, sep='-')) %>%
-      mutate(covid_voc = fct_case_when(
-        voc == '1-0' ~ 'Delta VOC',
-        voc == '1-1' ~ 'Omicron VOC'
-      ))
-    
-    return(dft)
-  }
   
   #-- Analysis
   #-- Negative Outcome
