@@ -30,15 +30,15 @@ current_analysis <- 'rem_sens_analysis'
 source('aux_objects_rem_12.R')
 
 # Creating Boolean Handlers for Analysis (goal: save time when re-running processes)
-DO_DESCRIPTIVE <- TRUE
-DO_INFECTION <- TRUE
-DO_HOSP <- TRUE
-DO_ANY_HOSP <- TRUE
-DO_SEVERE_HOSP <- TRUE
-DO_DEATH <- TRUE
-DO_HOSP_DEATH <- TRUE
-DO_NON_COVID_DEATH <- TRUE
-DO_SUBGROUP_ANALYSIS <- TRUE
+DO_DESCRIPTIVE <- FALSE
+DO_INFECTION <- FALSE
+DO_HOSP <- FALSE
+DO_ANY_HOSP <- FALSE
+DO_SEVERE_HOSP <- FALSE
+DO_DEATH <- FALSE
+DO_HOSP_DEATH <- FALSE
+DO_NON_COVID_DEATH <- FALSE
+DO_SUBGROUP_ANALYSIS <- FALSE
 DO_COMPETING_RISK <- TRUE
 
 ## Merge batched data into the one dataframe
