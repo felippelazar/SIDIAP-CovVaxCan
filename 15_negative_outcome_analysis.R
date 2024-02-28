@@ -22,10 +22,13 @@ getNegativeOutcomesResults <- function(concept_id, file_location){
       
       return(read.table(file_full_path, sep=';', header = T) %>%
             select(term, estimate, std.error, conf.low, conf.high, n_event) %>%
+            mutate(est_hr.conf.interval = sprintf('%.2f (%.2f - %.2f)', estimate, conf.low, conf.high)) %>%
             mutate(ConceptId = concept_id))
 }
 
 NCO <- read.csv(file=here("NCO.csv"), sep = ";") # File with the conditions chosen to assess residual confounding
+# Choosing Only Validated NCO
+NCO <- NCO[1:43, ]
 
 negOutcomes12 <- lapply(NCO$ConceptId, getNegativeOutcomesResults, glue('Results/', 'dose_12/negative outcomes/'))
 negOutcomes12 <- do.call(bind_rows, negOutcomes12)
@@ -36,18 +39,18 @@ negOutcomes3 <- do.call(bind_rows, negOutcomes3)
 negOutcomes3 <- negOutcomes3 %>% left_join(NCO) 
 
 # Plot of Negative Control Outcome Estimates
-ggplot(bind_rows(negOutcomes12, negOutcomes3) %>% drop_na(), 
+ggplot(bind_rows(negOutcomes12, negOutcomes3) %>% drop_na() %>% filter((term != 'periodV1 0-14D') & (term != 'periodV3 0-14D')), 
                  aes(y=reorder(OutcomeName, n_event), x=estimate, size=n_event)) +
       geom_errorbarh(aes(xmax = conf.high, xmin = conf.low), size = .5, height = .2, color = "gray50") +
       geom_point(aes(group=term), alpha = 0.8) + scale_size(range = c(0, 3)) +
       geom_vline(xintercept=1, size = .25, linetype = "dashed") +
-      facet_grid(.~term) + scale_x_log10() + coord_cartesian(xlim=c(0.5,3)) + 
+      facet_grid(.~term) + scale_x_log10() + coord_cartesian(xlim=c(0.3,3)) + 
       theme_minimal() +
       theme(panel.grid.minor = element_blank(), text = element_text(family='Helvetica'),
             legend.position = "bottom", strip.background =element_rect(fill="lightgrey")) +
       labs(x = 'Hazard Ratio', y = 'Outcomes', size = 'Number of Events')
 
-ggsave('Figures/NegOutcomesPlot_Figure_19122023.png', height = 150, width = 250, units = "mm", dpi = "print")
+ggsave('Figures/NegOutcomesPlot_Figure_21022.png', height = 150, width = 250, units = "mm", dpi = "print")
 
 # Plotting Calibration
 negOutcomes12_toPlot <- negOutcomes12 %>% filter(term == 'periodV1 14D+') %>%
@@ -79,7 +82,7 @@ tt <- egg::ggarrange(v1_14, v2_7, v3_14, v3_60, ncol = 2,
                      labels = c('A', 'B', 'C', 'D'),
                      label.args = list(gp=gpar(fontface='bold', fontsize=30), x=unit(2,"line"), hjust=-0.5, vjust=1.5))
 
-ggsave("Figures/NegOutcomes_CalibrationPlot_19122023.png", plot = tt, height = 260, width = 260, units = "mm", dpi = "print")
+ggsave("Figures/NegOutcomes_CalibrationPlot_210224.png", plot = tt, height = 260, width = 260, units = "mm", dpi = "print")
 
 # Loading Main Outcome Results
 getCalibratedResults <- function(neg_outcomes_dataframe, main_results_dataframe, term_to_filter){
@@ -115,7 +118,8 @@ tidy_results <- bind_rows(getCalibratedResults(negOutcomes12, outcomeHR12, 'peri
           getCalibratedResults(negOutcomes3, outcomeHR3, 'periodV3 60+')) %>%
       mutate(estimate_ve = if_else(estimate>1, -(1-(1/estimate))*100, (1-estimate)*100),
              conf.high_ve = if_else(conf.low>1, -(1-(1/conf.low))*100, (1-conf.low)*100),
-             conf.low_ve= if_else(conf.high>1, -(1-(1/conf.high))*100, (1-conf.high)*100))
+             conf.low_ve= if_else(conf.high>1, -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
+      mutate(est_ve.conf.interval = sprintf('%.2f (%.2f - %.2f)', estimate_ve, conf.low_ve, conf.high_ve))
 
 bind_rows(negOutcomes12 %>% mutate(data = '1-2 dose'), negOutcomes3 %>% mutate(data = '3 dose'))
 

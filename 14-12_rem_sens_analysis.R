@@ -38,7 +38,7 @@ DO_SEVERE_HOSP <- TRUE
 DO_DEATH <- TRUE
 DO_HOSP_DEATH <- TRUE
 DO_NON_COVID_DEATH <- TRUE
-DO_SUBGROUP_ANALYSIS <- TRUE
+DO_SUBGROUP_ANALYSIS <- FALSE
 DO_COMPETING_RISK <- TRUE
 
 ## Merge batched data into the one dataframe
@@ -896,3 +896,7 @@ if(DO_COMPETING_RISK){
     write.table(here('Results', dose_analysis, current_analysis, 'cuminc_outcome_death_three_periods_failcode_covid_death.csv'), sep = ';', row.names = F)
   
 }
+
+rm(dfREM_death)
+rm(dfREM_hosp)
+rm(dfREM_hosp_death)
