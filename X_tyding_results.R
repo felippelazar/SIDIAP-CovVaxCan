@@ -220,6 +220,9 @@ files_main_results <- list(
       'outcome_covid_period_all.csv' = 'infection - all periods - no',
       'outcome_covid_period_three.csv' = 'infection - three periods - no',
       'outcome_covid_period_three_stratified.csv' = 'infection - three periods - yes',
+      'outcome_any_hosp_period_all.csv' = 'any hospitalization - all periods - no',
+      'outcome_any_hosp_period_three.csv' = 'any hospitalization - three periods - no',
+      'outcome_any_period_three_stratified.csv' = 'any hospitalization - three periods - yes',
       'outcome_hosp_period_all.csv' = 'hospitalization - all periods - no',
       'outcome_hosp_period_three.csv' = 'hospitalization - three periods - no',
       'outcome_hosp_period_three_stratified.csv' = 'hospitalization - three periods - yes',
@@ -320,7 +323,15 @@ tidy_add_cuminc_analysis <- function(files_path, workbook){
             mutate(est.hr = exp(estimate), 
                    conf.low = exp(estimate - 1.96*std.error),
                    conf.high = exp(estimate + 1.96*std.error)) %>%
-            mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', est.hr, conf.low, conf.high))
+            mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', est.hr, conf.low, conf.high)) %>%
+            mutate(estimate_ve = if_else(est.hr > 1, 
+                                         -(1-(1/est.hr))*100, (1-est.hr)*100),
+                   conf.low_ve = if_else(conf.low > 1, 
+                                         -(1-(1/conf.low))*100, (1-conf.low)*100),
+                   conf.high_ve= if_else(conf.high > 1, 
+                                         -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve)) %>%
+            select(-conf.low_ve, -conf.high_ve)
       
       # Getting Dimensions
       n_row = dim(temp_table)[1]
@@ -472,6 +483,7 @@ tidy_add_tidy_subgroup <- function(files_path, workbook){
 #--- Creating Tidied Excel Files
 all_analysis <- list(
       'Results/dose_12/rem_main_analysis',
+      'Results/dose_12/rem_sens_analysis',
       'Results/dose_12/sub_group_cancer_strict',
       'Results/dose_12/sub_group_covid_lab',
       'Results/dose_12/sub_group_hosp_3_days',
@@ -479,6 +491,7 @@ all_analysis <- list(
       'Results/dose_12/sub_group_tested_patients',
       'Results/dose_12/sub_group_not_jansen',
       'Results/dose_3/rem_main_analysis',
+      'Results/dose_3/rem_sens_analysis',
       'Results/dose_3/sub_group_cancer_strict',
       'Results/dose_3/sub_group_covid_lab',
       'Results/dose_3/sub_group_hosp_3_days',
@@ -843,12 +856,14 @@ create_forest_plot_main_results <- function(table){
 
 all_analysis <- list(
       'Results/dose_12/rem_main_analysis',
+      'Results/dose_12/rem_sens_analysis',
       'Results/dose_12/sub_group_cancer_strict',
       'Results/dose_12/sub_group_covid_lab',
       'Results/dose_12/sub_group_hosp_3_days',
       'Results/dose_12/sub_group_tested_patients',
       'Results/dose_12/sub_group_not_jansen',
       'Results/dose_3/rem_main_analysis',
+      'Results/dose_3/rem_sens_analysis',
       'Results/dose_3/sub_group_cancer_strict',
       'Results/dose_3/sub_group_covid_lab',
       'Results/dose_3/sub_group_hosp_3_days',

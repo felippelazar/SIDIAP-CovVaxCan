@@ -107,4 +107,111 @@ addStyledSheet <- function(workbook, sheet_name, temp_table, new_label = NULL, a
       
 }
       
+create_forest_table_subgroup <- function(file_forest){
+      
+      temp_table <- read_delim(file_forest, delim = ';', locale = locale(decimal_mark = "."))
+      temp_table <- temp_table %>% select(model_interaction_var, term, contrast) %>%
+            cbind(temp_table %>% select(-model_interaction_var, -term, -contrast) %>%
+                        mutate_all(as.numeric))
+      
+      forest_table <- temp_table %>%
+            mutate(estimate = exp(estimate),
+                   asymp.UCL = exp(asymp.UCL),
+                   asymp.LCL = exp(asymp.LCL)) %>%
+            mutate(estimate_ve = if_else(estimate > 1, 
+                                         -(1-(1/estimate))*100, (1-estimate )*100),
+                   conf.low_ve = if_else(asymp.LCL  > 1, 
+                                         -(1-(1/asymp.LCL))*100, (1-asymp.LCL)*100),
+                   conf.high_ve= if_else(asymp.UCL > 1, 
+                                         -(1-(1/asymp.UCL))*100, (1-asymp.UCL)*100)) %>%
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.low_ve, conf.high_ve)) %>%
+            rename(mean = estimate_ve,
+                   upper = conf.low_ve,
+                   lower = conf.high_ve) %>%
+            mutate(model_p_value = sprintf('%.3f', model_p_value)) %>%
+            mutate(contrast = case_when(
+                  contrast == '(V1 14D+) - (no-vax)' ~ 'Partially Vaccinated',
+                  contrast == '(V2 7D+) - (no-vax)' ~ 'Fully Vaccinated',
+                  contrast == '(V3 14-60D) - (no-vax)' ~ 'Booster 14 - 60 days',
+                  contrast == '(V3 60+) - (no-vax)' ~ 'Booster 60 days+'
+            )) %>%
+            filter(!is.na(contrast))
+      
+      return(forest_table)
+}
+
+# Creating Main Table Results 
+create_forest_table_main_results <- function(files_forest){
+      
+      # Getting Files Results
+      temp_tables <- lapply(files_forest , function(x) read.csv(x, row.names=NULL, header = T, sep = ';') %>% 
+                                  mutate(analysis = files_main_results[[str_extract(x, '([^/]*)$')]], .before=term))
+      
+      # Binding Tables
+      temp_table <- do.call(bind_rows, temp_tables)
+      temp_table <- temp_table %>%
+            separate(analysis, into = c('outcome', 'periods'), sep = '-') %>%
+            mutate(term = str_replace(term, 'period', '')) %>%
+            mutate(estimate = ifelse(reference_row == TRUE, 1, estimate),
+                   conf.low = ifelse(reference_row == TRUE, 1, conf.low),
+                   conf.high = ifelse(reference_row == TRUE, 1, conf.high)) %>%
+            mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', estimate, conf.low, conf.high)) %>%
+            mutate(estimate_ve = if_else(estimate>1, 
+                                         -(1-(1/estimate))*100, (1-estimate)*100),
+                   conf.low_ve = if_else(conf.low>1, 
+                                         -(1-(1/conf.low))*100, (1-conf.low)*100),
+                   conf.high_ve= if_else(conf.high>1, 
+                                         -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve))
+      
+      forest_table <- temp_table %>%
+            select(outcome, periods, n_event, exposure,
+                   term, estimate, conf.low, conf.high, p.value, est.conf.interval,
+                   estimate_ve, conf.low_ve, conf.high_ve, est_ve.conf.interval) %>%
+            rename(mean = estimate_ve,
+                   lower = conf.high_ve,
+                   upper = conf.low_ve) %>%
+            mutate(p.value = sprintf('%.3f', p.value)) %>%
+            mutate(exposure = format(exposure, big.mark=","))
+      
+      
+      return(forest_table)
+}
+
+do_nothing <- function(obj){return(obj)}
+
+create_forest_table_sens_results <- function(files_forest){
+      
+      # Getting Files Results
+      temp_table <- read.csv(files_forest, row.names=NULL, header = T, sep = ';') %>% 
+            mutate(analysis = files_forest)
+      
+      # Binding Tables
+      temp_table <- temp_table %>%
+            mutate(term = str_replace(term, 'period', '')) %>%
+            mutate(estimate = ifelse(reference_row == TRUE, 1, estimate),
+                   conf.low = ifelse(reference_row == TRUE, 1, conf.low),
+                   conf.high = ifelse(reference_row == TRUE, 1, conf.high)) %>%
+            mutate(est.conf.interval = sprintf('%.2f (%.2f - %.2f)', estimate, conf.low, conf.high)) %>%
+            mutate(estimate_ve = if_else(estimate>1, 
+                                         -(1-(1/estimate))*100, (1-estimate)*100),
+                   conf.low_ve = if_else(conf.low>1, 
+                                         -(1-(1/conf.low))*100, (1-conf.low)*100),
+                   conf.high_ve= if_else(conf.high>1, 
+                                         -(1-(1/conf.high))*100, (1-conf.high)*100)) %>%
+            mutate(est_ve.conf.interval = sprintf('%.1f%% (%.1f - %.1f)', estimate_ve, conf.high_ve, conf.low_ve))
+      
+      forest_table <- temp_table %>%
+            select(analysis, n_event, exposure,
+                   term, estimate, conf.low, conf.high, p.value, est.conf.interval,
+                   estimate_ve, conf.low_ve, conf.high_ve, est_ve.conf.interval) %>%
+            rename(mean = estimate_ve,
+                   lower = conf.high_ve,
+                   upper = conf.low_ve) %>%
+            mutate(p.value = sprintf('%.3f', p.value)) %>%
+            mutate(exposure = format(exposure, big.mark=","))
+      
+      
+      return(forest_table)
+}
       
